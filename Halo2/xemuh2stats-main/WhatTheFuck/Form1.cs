@@ -625,11 +625,27 @@ namespace xemuh2stats
 
             // xemu base_address + xbe base_address
             var translated_base = Program.qmp.Translate(0x80000000);
-            var host_base_executable_address = (long)translated_base + 0x5C000;
 
             // Debug: Show translation details
             Console.WriteLine($"DEBUG: Translate(0x80000000) = 0x{translated_base:X}");
-            Console.WriteLine($"DEBUG: host_base_executable_address = 0x{host_base_executable_address:X}");
+
+            // Try to read first few bytes at translated_base to verify it's valid Xbox memory
+            // Xbox memory at 0x80000000 should have specific signature patterns
+            var testRead = Program.memory.ReadMemory(false, (long)translated_base, 16);
+            Console.WriteLine($"DEBUG: First 16 bytes at translated_base: {BitConverter.ToString(testRead)}");
+
+            // The XBE base offset might need adjustment. Let's try without it first.
+            // XBE loads at 0x00010000 in Xbox virtual space, which maps to physical 0x10000
+            // So from 0x80000000 base, the XBE should be at offset 0x10000 (not 0x5C000)
+            // But 0x5C000 might be for a specific memory layout. Let's test both.
+
+            var host_base_executable_address = (long)translated_base + 0x5C000;
+            Console.WriteLine($"DEBUG: host_base_executable_address (with 0x5C000) = 0x{host_base_executable_address:X}");
+
+            // Read some test bytes at the calculated executable base
+            var testExeRead = Program.memory.ReadMemory(false, host_base_executable_address, 16);
+            Console.WriteLine($"DEBUG: First 16 bytes at host_base_executable_address: {BitConverter.ToString(testExeRead)}");
+
             UpdateHookStatus($"Step 5b: Base=0x{translated_base:X} + 0x5C000 = 0x{host_base_executable_address:X}");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
