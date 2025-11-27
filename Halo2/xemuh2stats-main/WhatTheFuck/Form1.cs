@@ -624,9 +624,11 @@ namespace xemuh2stats
             UpdateHookStatus("Step 5b: Translating base address...");
 
             // ORIGINAL WORKING CODE: xemu base_address + xbe base_address
-            var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
+            var translate_result = Program.qmp.Translate(0x80000000);
+            var host_base_executable_address = (long) translate_result + 0x5C000;
 
-            Console.WriteLine($"DEBUG: Translate(0x80000000) + 0x5C000 = 0x{host_base_executable_address:X}");
+            // Show debug info in message box so we can see it
+            MessageBox.Show($"Translate(0x80000000) = 0x{translate_result:X}\nBase + 0x5C000 = 0x{host_base_executable_address:X}", "Debug: Base Address", MessageBoxButtons.OK, MessageBoxIcon.Information);
             UpdateHookStatus($"Step 5b: Base=0x{host_base_executable_address:X}");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
@@ -636,10 +638,27 @@ namespace xemuh2stats
 
             UpdateHookStatus("Step 5c: Reading game state pointers...");
 
-            var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
-            var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
-            var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
+            // Read raw pointer values first for diagnostics
+            var players_raw = Program.memory.ReadUInt(Program.exec_resolver["players"].address);
+            var objects_raw = Program.memory.ReadUInt(Program.exec_resolver["objects"].address);
+            var game_engine_raw = Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address);
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+            var life_cycle_raw = Program.memory.ReadInt(Program.exec_resolver["life_cycle"].address);
+
+            // Show diagnostic info
+            MessageBox.Show(
+                $"Raw memory reads from host addresses:\n\n" +
+                $"players @0x{Program.exec_resolver["players"].address:X} = 0x{players_raw:X}\n" +
+                $"objects @0x{Program.exec_resolver["objects"].address:X} = 0x{objects_raw:X}\n" +
+                $"game_engine @0x{Program.exec_resolver["game_engine_globals"].address:X} = 0x{game_engine_raw:X}\n" +
+                $"tags @0x{Program.exec_resolver["tags"].address:X} = 0x{game_state_offset:X}\n" +
+                $"life_cycle @0x{Program.exec_resolver["life_cycle"].address:X} = {life_cycle_raw}\n\n" +
+                $"Expected: Xbox pointers should be 0x8xxxxxxx",
+                "Debug: Raw Pointer Values", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            var game_state_players_addr = Program.qmp.Translate(players_raw);
+            var game_state_objects_addr = Program.qmp.Translate(objects_raw);
+            var game_engine_addr = Program.qmp.Translate(game_engine_raw);
 
             UpdateHookStatus("Step 5d: Waiting for game to load...");
 
