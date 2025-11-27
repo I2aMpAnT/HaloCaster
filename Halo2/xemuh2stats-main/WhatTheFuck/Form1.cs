@@ -635,49 +635,57 @@ namespace xemuh2stats
                 Console.WriteLine($"DEBUG: QMP translation failed: {ex.Message}");
             }
 
-            // Also try to find Xbox RAM by scanning memory regions (64MB = 0x4000000, 128MB = 0x8000000)
+            // Scan memory regions to find Xbox RAM (64MB = 0x4000000, 128MB = 0x8000000)
             var regions = Program.memory.QueryMemoryRegions();
-            Console.WriteLine($"DEBUG: Found {regions.Count} memory regions");
+            Console.WriteLine($"DEBUG: Found {regions.Count} memory regions total");
+
+            // List ALL large regions for debugging
+            var largeRegions = regions.Where(r => r.RegionSize >= 0x1000000).ToList(); // 16MB+
+            Console.WriteLine($"DEBUG: Found {largeRegions.Count} regions >= 16MB:");
+            foreach (var r in largeRegions)
+            {
+                Console.WriteLine($"DEBUG:   Region at 0x{r.BaseAddress.ToInt64():X}, size=0x{r.RegionSize:X} ({r.RegionSize / 1024 / 1024}MB), protect={r.Protect}, state={r.State}");
+            }
 
             long? xboxRamBase = null;
+            // First try exact 64MB or 128MB regions
             foreach (var region in regions)
             {
-                // Look for 64MB or 128MB regions (Xbox RAM)
                 if (region.RegionSize == 0x4000000 || region.RegionSize == 0x8000000)
                 {
-                    Console.WriteLine($"DEBUG: Found potential Xbox RAM region at 0x{region.BaseAddress.ToInt64():X}, size=0x{region.RegionSize:X}, protect={region.Protect}");
-
-                    // Try to read from this region and check if it looks like Xbox memory
+                    Console.WriteLine($"DEBUG: Found exact Xbox RAM size region at 0x{region.BaseAddress.ToInt64():X}");
                     var testBytes = Program.memory.ReadMemory(false, region.BaseAddress.ToInt64(), 16);
                     Console.WriteLine($"DEBUG: First 16 bytes: {BitConverter.ToString(testBytes)}");
 
-                    // If we haven't found a candidate yet, use this one
-                    if (xboxRamBase == null)
+                    // Check if this region has non-zero data (indicates actual RAM, not reserved space)
+                    if (testBytes.Any(b => b != 0))
                     {
                         xboxRamBase = region.BaseAddress.ToInt64();
+                        Console.WriteLine($"DEBUG: This region has non-zero data - using it!");
+                        break;
                     }
                 }
             }
 
-            // Use memory scan result if QMP failed or returned suspicious value
+            // ALWAYS prefer memory scan result over QMP when found
             long host_base_executable_address;
-            if (xboxRamBase.HasValue && (translated_base == 0 || translated_base == ulong.MaxValue))
+            if (xboxRamBase.HasValue)
             {
                 host_base_executable_address = xboxRamBase.Value;
                 Console.WriteLine($"DEBUG: Using memory scan result: 0x{host_base_executable_address:X}");
             }
             else
             {
+                // Fall back to QMP
                 host_base_executable_address = (long)translated_base;
-                Console.WriteLine($"DEBUG: Using QMP translation result: 0x{host_base_executable_address:X}");
+                Console.WriteLine($"DEBUG: No suitable region found, using QMP result: 0x{host_base_executable_address:X}");
             }
 
-            // Show both for comparison
-            if (xboxRamBase.HasValue)
+            Console.WriteLine($"DEBUG: QMP translation returned: 0x{translated_base:X}");
+            Console.WriteLine($"DEBUG: Final host_base_executable_address: 0x{host_base_executable_address:X}");
+            if (xboxRamBase.HasValue && translated_base != 0)
             {
-                Console.WriteLine($"DEBUG: Memory scan found Xbox RAM at: 0x{xboxRamBase.Value:X}");
-                Console.WriteLine($"DEBUG: QMP says Xbox RAM is at: 0x{translated_base:X}");
-                Console.WriteLine($"DEBUG: Difference: {(long)translated_base - xboxRamBase.Value} bytes");
+                Console.WriteLine($"DEBUG: Difference (QMP - scan): {(long)translated_base - xboxRamBase.Value} bytes (0x{((long)translated_base - xboxRamBase.Value):X})");
             }
 
             // Read some test bytes at the calculated executable base
