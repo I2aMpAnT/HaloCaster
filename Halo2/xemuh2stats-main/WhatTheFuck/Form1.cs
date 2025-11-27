@@ -48,6 +48,7 @@ namespace xemuh2stats
 
         // Emblem cache to avoid repeated downloads
         private static Dictionary<string, Image> emblemCache = new Dictionary<string, Image>();
+        private static HashSet<string> failedEmblemRequests = new HashSet<string>();
 
         private Image GetEmblemImage(int primaryColor, int secondaryColor, int tertiaryColor, int quaternaryColor, int emblemForeground, int emblemBackground)
         {
@@ -56,26 +57,27 @@ namespace xemuh2stats
             if (emblemCache.ContainsKey(cacheKey))
                 return emblemCache[cacheKey];
 
+            // Don't retry requests that already failed (server returns 500 for some combinations)
+            if (failedEmblemRequests.Contains(cacheKey))
+                return null;
+
             try
             {
                 string url = $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
-                Console.WriteLine($"Emblem URL: {url}");
 
                 using (WebClient client = new WebClient())
                 {
-                    // Add headers to appear as a browser
                     client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-                    client.Headers.Add("Accept", "image/png,image/*,*/*");
-
                     byte[] imageData = client.DownloadData(url);
-                    Console.WriteLine($"Downloaded {imageData?.Length ?? 0} bytes");
 
                     if (imageData == null || imageData.Length == 0)
+                    {
+                        failedEmblemRequests.Add(cacheKey);
                         return null;
+                    }
 
                     using (MemoryStream ms = new MemoryStream(imageData))
                     {
-                        // Create a copy of the image so it persists after stream disposal
                         using (Image tempImg = Image.FromStream(ms))
                         {
                             Image img = new Bitmap(tempImg);
@@ -85,10 +87,9 @@ namespace xemuh2stats
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Error loading emblem: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Emblem error: {ex}");
+                failedEmblemRequests.Add(cacheKey);
                 return null;
             }
         }
@@ -416,8 +417,6 @@ namespace xemuh2stats
                     int quaternaryColor = (int)player.player.profile_traits.profile.quaternary_color;
                     int emblemForeground = (int)player.player.profile_traits.profile.emblem_info.foreground_emblem;
                     int emblemBackground = (int)player.player.profile_traits.profile.emblem_info.background_emblem;
-
-                    Console.WriteLine($"Player {i} emblem: P={primaryColor} S={secondaryColor} EP={tertiaryColor} ES={quaternaryColor} EF={emblemForeground} EB={emblemBackground}");
 
                     Image emblem = GetEmblemImage(primaryColor, secondaryColor, tertiaryColor, quaternaryColor, emblemForeground, emblemBackground);
                     if (emblem != null)
