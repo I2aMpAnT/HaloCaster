@@ -498,5 +498,76 @@ namespace xemuh2stats.classes
             };
             row.Append(cell);
         }
+
+        private static readonly List<string> identity_column_headers = new List<string>()
+        {
+            "Player Name",
+            "Xbox Identifier",
+            "Machine Identifier"
+        };
+
+        public static void dump_identity_to_sheet(string filename, int playerCount)
+        {
+            if (!Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}/stats/"))
+                Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}/stats/");
+
+            string filePath = $"{AppDomain.CurrentDomain.BaseDirectory}/stats/{filename}_identity.xlsx";
+
+            using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Create(filePath, SpreadsheetDocumentType.Workbook))
+            {
+                WorkbookPart workbookPart = spreadsheetDocument.AddWorkbookPart();
+                workbookPart.Workbook = new Workbook();
+
+                WorksheetPart worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
+                worksheetPart.Worksheet = new Worksheet(new SheetData());
+
+                Sheets sheets = spreadsheetDocument.WorkbookPart.Workbook.AppendChild(new Sheets());
+
+                var data = CreateSheet(workbookPart, sheets, "Player Identities", identity_column_headers.ToArray());
+
+                for (int i = 0; i < playerCount; i++)
+                {
+                    var gameStatePlayer = game_state_player.get(i);
+                    string playerName = gameStatePlayer.GetPlayerName();
+
+                    if (string.IsNullOrWhiteSpace(playerName))
+                        continue;
+
+                    Row playerRow = new Row();
+
+                    Cell nameCell = new Cell()
+                    {
+                        CellValue = new CellValue(playerName),
+                        DataType = new EnumValue<CellValues>(CellValues.String)
+                    };
+                    playerRow.Append(nameCell);
+
+                    Cell identifierCell = new Cell()
+                    {
+                        CellValue = new CellValue(gameStatePlayer.identifier.ToString("X16")),
+                        DataType = new EnumValue<CellValues>(CellValues.String)
+                    };
+                    playerRow.Append(identifierCell);
+
+                    unsafe
+                    {
+                        byte[] machineId = new byte[6];
+                        for (int j = 0; j < 6; j++)
+                            machineId[j] = gameStatePlayer.machine_identifier[j];
+
+                        Cell machineCell = new Cell()
+                        {
+                            CellValue = new CellValue(BitConverter.ToString(machineId).Replace("-", "")),
+                            DataType = new EnumValue<CellValues>(CellValues.String)
+                        };
+                        playerRow.Append(machineCell);
+                    }
+
+                    data.Append(playerRow);
+                }
+
+                workbookPart.Workbook.Save();
+            }
+        }
     }
 }

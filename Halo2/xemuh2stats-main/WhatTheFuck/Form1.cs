@@ -53,6 +53,7 @@ namespace xemuh2stats
             for (int i = 0; i < 16; i++)
             {
                 players_table.Rows.Add();
+                identity_table.Rows.Add();
                 debug_table.Rows.Add();
             }
 
@@ -168,6 +169,7 @@ namespace xemuh2stats
                         }
 
                         xls_generator.dump_game_to_sheet($"{timestamp}", real_time_cache, post_game_, Program.variant_details_cache);
+                        xls_generator.dump_identity_to_sheet($"{timestamp}", real_time_cache.Count);
                         dump_lock = true;
                     }
                 }
@@ -181,6 +183,11 @@ namespace xemuh2stats
                     case "Players":
                     {
                         render_players_tab();
+                        break;
+                    }
+                    case "Identity":
+                    {
+                        render_identity_tab();
                         break;
                     }
                     case "Weapon Stats":
@@ -419,6 +426,32 @@ namespace xemuh2stats
                 else
                 {
                     players_table.Rows[i].Cells[6].Value = player.game_stats.kills + player.game_stats.assists;
+                }
+            }
+        }
+
+        private void render_identity_tab()
+        {
+            int test_player_count =
+                Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+
+            for (int i = 0; i < test_player_count; i++)
+            {
+                var gameStatePlayer = game_state_player.get(i);
+                string playerName = gameStatePlayer.GetPlayerName();
+
+                if (string.IsNullOrWhiteSpace(playerName))
+                    continue;
+
+                identity_table.Rows[i].Cells[0].Value = playerName;
+                identity_table.Rows[i].Cells[1].Value = gameStatePlayer.identifier.ToString("X16");
+
+                unsafe
+                {
+                    byte[] machineId = new byte[6];
+                    for (int j = 0; j < 6; j++)
+                        machineId[j] = gameStatePlayer.machine_identifier[j];
+                    identity_table.Rows[i].Cells[2].Value = BitConverter.ToString(machineId).Replace("-", "");
                 }
             }
         }

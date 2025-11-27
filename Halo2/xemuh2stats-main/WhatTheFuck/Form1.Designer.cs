@@ -64,6 +64,11 @@
             this.column_player_deaths = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_player_assists = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_kda = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.identity_tab_page = new System.Windows.Forms.TabPage();
+            this.identity_table = new System.Windows.Forms.DataGridView();
+            this.column_identity_name = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.column_identity_xuid = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.column_identity_machine = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.weapon_stats_tab = new System.Windows.Forms.TabPage();
             this.weapon_player_select = new System.Windows.Forms.ComboBox();
             this.weapon_stat_table = new System.Windows.Forms.DataGridView();
@@ -116,6 +121,8 @@
             this.groupBox1.SuspendLayout();
             this.players_tab_page.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.players_table)).BeginInit();
+            this.identity_tab_page.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.identity_table)).BeginInit();
             this.weapon_stats_tab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.weapon_stat_table)).BeginInit();
             this.debug_tab.SuspendLayout();
@@ -132,6 +139,7 @@
             // 
             this.main_tab_control.Controls.Add(this.setup_tab_page);
             this.main_tab_control.Controls.Add(this.players_tab_page);
+            this.main_tab_control.Controls.Add(this.identity_tab_page);
             this.main_tab_control.Controls.Add(this.weapon_stats_tab);
             this.main_tab_control.Controls.Add(this.debug_tab);
             this.main_tab_control.Controls.Add(this.obs_tab_page);
@@ -483,14 +491,61 @@
             this.column_player_assists.Name = "column_player_assists";
             this.column_player_assists.ReadOnly = true;
             this.column_player_assists.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
+            //
             // column_kda
-            // 
+            //
             this.column_kda.HeaderText = "KDA";
             this.column_kda.Name = "column_kda";
             this.column_kda.ReadOnly = true;
             this.column_kda.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
+            //
+            // identity_tab_page
+            //
+            this.identity_tab_page.Controls.Add(this.identity_table);
+            this.identity_tab_page.Location = new System.Drawing.Point(4, 22);
+            this.identity_tab_page.Name = "identity_tab_page";
+            this.identity_tab_page.Padding = new System.Windows.Forms.Padding(3);
+            this.identity_tab_page.Size = new System.Drawing.Size(768, 624);
+            this.identity_tab_page.TabIndex = 7;
+            this.identity_tab_page.Text = "Identity";
+            this.identity_tab_page.UseVisualStyleBackColor = true;
+            //
+            // identity_table
+            //
+            this.identity_table.AllowUserToAddRows = false;
+            this.identity_table.AllowUserToDeleteRows = false;
+            this.identity_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.identity_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.column_identity_name,
+            this.column_identity_xuid,
+            this.column_identity_machine});
+            this.identity_table.Location = new System.Drawing.Point(6, 6);
+            this.identity_table.Name = "identity_table";
+            this.identity_table.ReadOnly = true;
+            this.identity_table.Size = new System.Drawing.Size(756, 599);
+            this.identity_table.TabIndex = 0;
+            //
+            // column_identity_name
+            //
+            this.column_identity_name.HeaderText = "Player Name";
+            this.column_identity_name.Name = "column_identity_name";
+            this.column_identity_name.ReadOnly = true;
+            this.column_identity_name.Width = 150;
+            //
+            // column_identity_xuid
+            //
+            this.column_identity_xuid.HeaderText = "Xbox Identifier";
+            this.column_identity_xuid.Name = "column_identity_xuid";
+            this.column_identity_xuid.ReadOnly = true;
+            this.column_identity_xuid.Width = 200;
+            //
+            // column_identity_machine
+            //
+            this.column_identity_machine.HeaderText = "Machine Identifier";
+            this.column_identity_machine.Name = "column_identity_machine";
+            this.column_identity_machine.ReadOnly = true;
+            this.column_identity_machine.Width = 200;
+            //
             // weapon_stats_tab
             // 
             this.weapon_stats_tab.Controls.Add(this.weapon_player_select);
@@ -916,6 +971,8 @@
             this.groupBox1.PerformLayout();
             this.players_tab_page.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.players_table)).EndInit();
+            this.identity_tab_page.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.identity_table)).EndInit();
             this.weapon_stats_tab.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.weapon_stat_table)).EndInit();
             this.debug_tab.ResumeLayout(false);
@@ -937,6 +994,11 @@
         #endregion
         private System.Windows.Forms.TabControl main_tab_control;
         private System.Windows.Forms.TabPage players_tab_page;
+        private System.Windows.Forms.TabPage identity_tab_page;
+        private System.Windows.Forms.DataGridView identity_table;
+        private System.Windows.Forms.DataGridViewTextBoxColumn column_identity_name;
+        private System.Windows.Forms.DataGridViewTextBoxColumn column_identity_xuid;
+        private System.Windows.Forms.DataGridViewTextBoxColumn column_identity_machine;
         private System.Windows.Forms.Timer main_timer;
         private System.Windows.Forms.DataGridView players_table;
         private System.Windows.Forms.TabPage weapon_stats_tab;
