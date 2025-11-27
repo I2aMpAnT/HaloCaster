@@ -142,14 +142,25 @@ function getEmblemCellContent(player) {
         background: player.emblem_background
     });
 
+    // Check if we have valid emblem data
+    const hasEmblemData = player.emblem_foreground !== undefined &&
+                          player.emblem_background !== undefined &&
+                          player.primary_color !== undefined;
+
+    if (!hasEmblemData) {
+        console.warn('Missing emblem data for player:', player);
+        return '<span style="color: #666;">No emblem</span>';
+    }
+
     // Construct the emblem URL using player emblem values
-    // P/S = background colors, EP/ES = emblem (foreground) colors
+    // P/S = primary/secondary armor colors, EP/ES = emblem primary/secondary colors
+    // EF = emblem foreground shape, EB = emblem background shape
     const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/index.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
 
     console.log('Emblem URL:', emblem_url);
 
-    // Return emblem image
-    return `<img src="${emblem_url}" style="max-height: 44px;" alt="Emblem" />`;
+    // Return emblem image with error handling
+    return `<img src="${emblem_url}" style="max-height: 44px;" alt="Emblem" onerror="this.style.display='none'; console.error('Failed to load emblem:', '${emblem_url}');" />`;
 }
 
 // Function to generate HTML content for player name with weapon image
