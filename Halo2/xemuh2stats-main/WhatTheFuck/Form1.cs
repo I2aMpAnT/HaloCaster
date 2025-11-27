@@ -64,9 +64,13 @@ namespace xemuh2stats
                     byte[] imageData = client.DownloadData(url);
                     using (MemoryStream ms = new MemoryStream(imageData))
                     {
-                        Image img = Image.FromStream(ms);
-                        emblemCache[cacheKey] = img;
-                        return img;
+                        // Create a copy of the image so it persists after stream disposal
+                        using (Image tempImg = Image.FromStream(ms))
+                        {
+                            Image img = new Bitmap(tempImg);
+                            emblemCache[cacheKey] = img;
+                            return img;
+                        }
                     }
                 }
             }
