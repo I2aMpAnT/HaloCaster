@@ -507,7 +507,8 @@ namespace xemuh2stats
             for (int i = 0; i < test_player_count && i < identity_table.Rows.Count; i++)
             {
                 var gameStatePlayer = game_state_player.get(i);
-                string playerName = gameStatePlayer.GetPlayerName();
+                // Try direct memory read instead of struct field
+                string playerName = game_state_player.name(i);
 
                 if (string.IsNullOrWhiteSpace(playerName))
                     continue;
