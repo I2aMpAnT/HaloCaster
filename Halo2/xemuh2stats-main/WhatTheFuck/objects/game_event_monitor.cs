@@ -226,13 +226,10 @@ namespace WhatTheFuck.objects
             {
                 case e_game_results_event_type._game_results_event_type_kill:
                     return $"{message_base} {real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index)} Killed {real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index)} with {game_event.data.kill_event.statistic_index.GetDisplayName()}";
-                    break;
                 case e_game_results_event_type._game_results_event_type_score:
                     return $"{message_base} {real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index)} scored the {game_event.data.score_event.score_type}";
-                    break;
                 case e_game_results_event_type._game_results_event_type_carry:
                     return $"{message_base} {real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index)} is carrying {game_event.data.carry_event.carry_type.GetDisplayName()}";
-                    break;
             }
 
             return "";

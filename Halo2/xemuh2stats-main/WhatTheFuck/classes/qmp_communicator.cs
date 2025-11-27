@@ -253,7 +253,7 @@ public class QmpProxy
                 _qmp = new QEMUMonitorProtocol("localhost", false);
                 _qmp.Connect(port);
             }
-            catch (Exception e)
+            catch
             {
                 if (i > 4)
                 {

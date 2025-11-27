@@ -30,6 +30,7 @@ namespace WhatTheFuck.classes
         public websocket_response(string message_type, string response_type, T response)
         {
             this.message_type = message_type;
+            this.response_type = response_type;
             this.response = response;
         }
     }

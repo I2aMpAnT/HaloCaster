@@ -324,7 +324,7 @@ namespace xemuh2stats
             game_events_text_box.ScrollToCaret();
         }
 
-        private uint last_event = 0;
+        // private uint last_event = 0; // Unused - code using this is commented out
         private void render_game_events_tab()
         {
             //uint out_index = 0;
@@ -580,11 +580,11 @@ namespace xemuh2stats
                     }
                 }
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return "";
             }
-            catch (Exception ex)
+            catch
             {
                 return "";
             }

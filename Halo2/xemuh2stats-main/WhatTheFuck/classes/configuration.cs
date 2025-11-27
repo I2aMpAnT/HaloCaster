@@ -49,7 +49,7 @@ namespace WhatTheFuck.classes
         public List<configuration> AsList =>
             List.Cast<configuration>().ToList();
 
-        public IEnumerator<configuration> GetEnumerator()
+        public new IEnumerator<configuration> GetEnumerator()
         {
             foreach (configuration config in List)
             {
@@ -151,7 +151,7 @@ namespace WhatTheFuck.classes
 
         private List<KeyValuePair<string, string>> AsList =>
             List.Cast<KeyValuePair<string, string>>().ToList();
-        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+        public new IEnumerator<KeyValuePair<string, string>> GetEnumerator()
         {
             foreach (KeyValuePair<string, string> keyValuePair in List)
             {
