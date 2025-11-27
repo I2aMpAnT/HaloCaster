@@ -380,8 +380,8 @@ public class QmpProxy
 
         if (string.IsNullOrEmpty(dataString))
         {
-            Console.WriteLine($"Warning: Could not convert GPA 0x{addr:X} to HVA.");
-            return 0;
+            Console.WriteLine($"Error: Could not convert GPA 0x{addr:X} to HVA. Response: {response["return"]}");
+            throw new Exception($"Could not convert GPA 0x{addr:X} to HVA.");
         }
 
         try
@@ -390,8 +390,8 @@ public class QmpProxy
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Error parsing HVA from '{dataString}': {ex.Message}");
-            return 0;
+            Console.WriteLine($"Error parsing HVA from '{dataString}': {ex.Message}");
+            throw new Exception($"Error parsing HVA from '{dataString}': {ex.Message}");
         }
     }
 
@@ -435,9 +435,9 @@ public class QmpProxy
         }
         else
         {
-            // Return 0 instead of throwing to allow graceful recovery
-            Console.WriteLine($"Warning: Could not convert GVA 0x{addr:X} to GPA. Game may not be fully loaded.");
-            return 0;
+            // Log the actual response for debugging
+            Console.WriteLine($"Error converting GVA 0x{addr:X} to GPA. Response: {response["return"]}");
+            throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Game may not be fully loaded or QMP response format changed.");
         }
     }
 
