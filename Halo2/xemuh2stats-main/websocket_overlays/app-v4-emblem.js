@@ -155,7 +155,7 @@ function getEmblemCellContent(player) {
     // Construct the emblem URL using player emblem values
     // P/S = primary/secondary armor colors, EP/ES = emblem primary/secondary colors
     // EF = emblem foreground shape, EB = emblem background shape
-    const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/index.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
+    const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
 
     console.log('Emblem URL:', emblem_url);
 
