@@ -624,8 +624,13 @@ namespace xemuh2stats
             UpdateHookStatus("Step 5b: Translating base address (0x80000000)...");
 
             // xemu base_address + xbe base_address
-            var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
-            UpdateHookStatus($"Step 5b: Base addr = 0x{host_base_executable_address:X}");
+            var translated_base = Program.qmp.Translate(0x80000000);
+            var host_base_executable_address = (long)translated_base + 0x5C000;
+
+            // Debug: Show translation details
+            Console.WriteLine($"DEBUG: Translate(0x80000000) = 0x{translated_base:X}");
+            Console.WriteLine($"DEBUG: host_base_executable_address = 0x{host_base_executable_address:X}");
+            UpdateHookStatus($"Step 5b: Base=0x{translated_base:X} + 0x5C000 = 0x{host_base_executable_address:X}");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
@@ -633,10 +638,28 @@ namespace xemuh2stats
             }
 
             UpdateHookStatus("Step 5c: Reading game state pointers...");
-            var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
-            var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
-            var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
+
+            // Debug: Show all the intermediate values
+            var players_host_addr = Program.exec_resolver["players"].address;
+            var players_ptr_value = Program.memory.ReadUInt(players_host_addr);
+            Console.WriteLine($"DEBUG: exec_resolver['players'].address = 0x{players_host_addr:X}");
+            Console.WriteLine($"DEBUG: ReadUInt(players) = 0x{players_ptr_value:X}");
+
+            var game_state_players_addr = Program.qmp.Translate(players_ptr_value);
+            Console.WriteLine($"DEBUG: Translate(players_ptr) = 0x{game_state_players_addr:X}");
+
+            var objects_ptr_value = Program.memory.ReadUInt(Program.exec_resolver["objects"].address);
+            Console.WriteLine($"DEBUG: ReadUInt(objects) = 0x{objects_ptr_value:X}");
+            var game_state_objects_addr = Program.qmp.Translate(objects_ptr_value);
+            Console.WriteLine($"DEBUG: Translate(objects_ptr) = 0x{game_state_objects_addr:X}");
+
+            var game_engine_ptr_value = Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address);
+            Console.WriteLine($"DEBUG: ReadUInt(game_engine_globals) = 0x{game_engine_ptr_value:X}");
+            var game_engine_addr = Program.qmp.Translate(game_engine_ptr_value);
+            Console.WriteLine($"DEBUG: Translate(game_engine_ptr) = 0x{game_engine_addr:X}");
+
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+            Console.WriteLine($"DEBUG: ReadUInt(tags) = 0x{game_state_offset:X}");
 
             UpdateHookStatus("Step 5d: Waiting for game to load...");
 
@@ -668,6 +691,22 @@ namespace xemuh2stats
             Program.game_state_resolver["game_state_tags"].address = (long) game_state_tags_addr;
             Program.game_state_resolver["game_engine"].address = (long) game_engine_addr;
             Program.game_state_resolver["game_ending"].address = (long)game_state_players_addr - 0x1E8;
+
+            // Debug: Show final resolved addresses
+            Console.WriteLine($"DEBUG FINAL: game_state_players = 0x{game_state_players_addr:X}");
+            Console.WriteLine($"DEBUG FINAL: game_state_objects = 0x{game_state_objects_addr:X}");
+            Console.WriteLine($"DEBUG FINAL: game_state_tags = 0x{game_state_tags_addr:X}");
+            Console.WriteLine($"DEBUG FINAL: game_engine = 0x{game_engine_addr:X}");
+            Console.WriteLine($"DEBUG FINAL: life_cycle address = 0x{Program.exec_resolver["life_cycle"].address:X}");
+
+            // Debug: Try reading life_cycle right now
+            var test_life_cycle = Program.memory.ReadInt(Program.exec_resolver["life_cycle"].address);
+            Console.WriteLine($"DEBUG FINAL: life_cycle value = {test_life_cycle} ({(life_cycle)test_life_cycle})");
+
+            // Debug: Try reading a player name right now
+            var test_name_addr = (Program.game_state_resolver["game_state_players"].address + 0x90);
+            var test_name = Program.memory.ReadStringUnicode(test_name_addr, 16);
+            Console.WriteLine($"DEBUG FINAL: Player 0 name address = 0x{test_name_addr:X}, value = '{test_name}'");
 
             main_tab_control.TabPages.Add(players_tab_page);
             main_tab_control.TabPages.Add(identity_tab_page);

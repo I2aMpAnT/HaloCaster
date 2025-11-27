@@ -373,20 +373,27 @@ public class QmpProxy
         };
 
         var response = RunCmd(cmd);
-        var lines = response["return"].ToString().Replace("\r", "").Split('\n');
+        var rawResponse = response["return"].ToString();
+        Console.WriteLine($"DEBUG QMP gpa2hva(0x{addr:X}) raw response: '{rawResponse}'");
+
+        var lines = rawResponse.Replace("\r", "").Split('\n');
         var dataString = string.Join(" ",
             Array.ConvertAll(lines,
                 l => l.Contains(" is ") ? l.Split(new[] {" is "}, StringSplitOptions.None)[1] : string.Empty)).Trim();
 
+        Console.WriteLine($"DEBUG QMP gpa2hva parsed dataString: '{dataString}'");
+
         if (string.IsNullOrEmpty(dataString))
         {
-            Console.WriteLine($"Error: Could not convert GPA 0x{addr:X} to HVA. Response: {response["return"]}");
+            Console.WriteLine($"Error: Could not convert GPA 0x{addr:X} to HVA. Response: {rawResponse}");
             throw new Exception($"Could not convert GPA 0x{addr:X} to HVA.");
         }
 
         try
         {
-            return Convert.ToUInt64(dataString, 16);
+            var result = Convert.ToUInt64(dataString, 16);
+            Console.WriteLine($"DEBUG QMP gpa2hva result: 0x{result:X}");
+            return result;
         }
         catch (Exception ex)
         {
@@ -424,19 +431,25 @@ public class QmpProxy
         };
 
         var response = RunCmd(cmd);
-        var lines = response["return"].ToString().Replace("\r", "").Split('\n');
+        var rawResponse = response["return"].ToString();
+        Console.WriteLine($"DEBUG QMP gva2gpa(0x{addr:X}) raw response: '{rawResponse}'");
+
+        var lines = rawResponse.Replace("\r", "").Split('\n');
         var dataString = string.Join(" ",
             Array.ConvertAll(lines,
                 l => l.Contains("gpa: ") ? l.Split(new[] {"gpa: "}, StringSplitOptions.None)[1].Replace("0x","") : string.Empty)).Trim();
 
+        Console.WriteLine($"DEBUG QMP gva2gpa parsed dataString: '{dataString}'");
+
         if (ulong.TryParse(dataString, System.Globalization.NumberStyles.HexNumber, null, out ulong result))
         {
+            Console.WriteLine($"DEBUG QMP gva2gpa result: 0x{result:X}");
             return result;
         }
         else
         {
             // Log the actual response for debugging
-            Console.WriteLine($"Error converting GVA 0x{addr:X} to GPA. Response: {response["return"]}");
+            Console.WriteLine($"Error converting GVA 0x{addr:X} to GPA. Response: {rawResponse}");
             throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Game may not be fully loaded or QMP response format changed.");
         }
     }
