@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,9 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Threading;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 public class QMPError : Exception
 {
@@ -103,7 +102,7 @@ public class QEMUMonitorProtocol
                 return null;
             }
 
-            var resp = JsonSerializer.Deserialize<Dictionary<string, object>>(data);
+            var resp = JsonConvert.DeserializeObject<Dictionary<string, object>>(data);
             if (resp != null && resp.ContainsKey("event"))
             {
                 _events.Add(resp);
@@ -146,7 +145,7 @@ public class QEMUMonitorProtocol
     {
         try
         {
-            var jsonString = JsonSerializer.Serialize(qmpCmd);
+            var jsonString = JsonConvert.SerializeObject(qmpCmd);
             _sock.Send(System.Text.Encoding.UTF8.GetBytes(jsonString));
         }
         catch (SocketException e)
@@ -293,7 +292,7 @@ public class QmpProxy
             cmdCounter = 0;
             cmdCounterReset = DateTime.Now;
 
-            Console.WriteLine(JsonSerializer.Serialize(cmd));
+            Console.WriteLine(JsonConvert.SerializeObject(cmd));
             Debug.WriteLine(Environment.StackTrace);
         }
 
@@ -335,7 +334,7 @@ public class QmpProxy
     {
         var resp = RunCmd("query-status");
         return resp != null && resp.ContainsKey("return") &&
-               ((JsonElement) resp["return"]).GetProperty("status").GetString() == "paused";
+               ((JObject)resp["return"])["status"]?.ToString() == "paused";
     }
 
     public byte[] Read(ulong addr, int size)
