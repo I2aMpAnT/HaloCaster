@@ -400,13 +400,31 @@ namespace WhatTheFuck.classes
 
         public static void start(string ip, string port)
         {
-            _server = new websocket_server(new IPEndPoint(IPAddress.Parse(ip), int.Parse(port)));
-            _server.OnMessageReceived += server_message_received;
-            _server.OnClientConnected += _server_OnClientConnected;
-            _server.OnClientDisconnected += _server_OnClientDisconnected;
-            _server.OnSendMessage += _server_OnSendMessage;
-            game_event_monitor.add_event_callbaack(_server_on_game_event_update);
-            game_event_monitor.add_raw_event_callback(_server_on_raw_game_event);
+            // Stop existing server if running
+            if (_server != null)
+            {
+                try
+                {
+                    _server.Stop();
+                }
+                catch { }
+                _server = null;
+            }
+
+            try
+            {
+                _server = new websocket_server(new IPEndPoint(IPAddress.Parse(ip), int.Parse(port)));
+                _server.OnMessageReceived += server_message_received;
+                _server.OnClientConnected += _server_OnClientConnected;
+                _server.OnClientDisconnected += _server_OnClientDisconnected;
+                _server.OnSendMessage += _server_OnSendMessage;
+                game_event_monitor.add_event_callbaack(_server_on_game_event_update);
+                game_event_monitor.add_raw_event_callback(_server_on_raw_game_event);
+            }
+            catch (System.Net.Sockets.SocketException ex)
+            {
+                throw new Exception($"WebSocket server failed to start on port {port}.\n\nThe port may be in use by another application or a previous instance.\n\nTry closing any other HaloCaster instances, or wait a few seconds and try again.\n\nOriginal error: {ex.Message}");
+            }
         }
 
         public static void _server_on_game_event_update(string game_event)
@@ -459,7 +477,15 @@ namespace WhatTheFuck.classes
 
         public static void stop()
         {
-            _server.Stop();
+            if (_server != null)
+            {
+                try
+                {
+                    _server.Stop();
+                }
+                catch { }
+                _server = null;
+            }
         }
     }
 }
