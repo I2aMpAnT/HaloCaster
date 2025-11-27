@@ -631,9 +631,19 @@ namespace xemuh2stats
             var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
 
+            // Wait for game to load (tags address becomes non-zero)
+            int waitAttempts = 0;
             while (game_state_offset == 0)
             {
+                System.Threading.Thread.Sleep(100);
+                Application.DoEvents(); // Keep UI responsive
                 game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+                waitAttempts++;
+                if (waitAttempts > 600) // 60 second timeout
+                {
+                    MessageBox.Show("Timeout waiting for game to load. Please load a game in XEMU and try again.", "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
             var game_state_tags_addr = Program.qmp.Translate(game_state_offset);
