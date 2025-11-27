@@ -124,6 +124,10 @@ public class QEMUMonitorProtocol
         }
         catch (SocketException e)
         {
+            if (e.SocketErrorCode == SocketError.ConnectionRefused)
+            {
+                throw new QMPError($"Socket Error: {e.Message}\n\nXEMU must be running with QMP enabled.\nEither use HaloCaster to launch XEMU, or add this to your XEMU launch arguments:\n-qmp tcp:localhost:{port},server,nowait");
+            }
             throw new QMPError($"Socket Error: {e.Message}");
         }
     }
@@ -356,6 +360,12 @@ public class QmpProxy
 
     public ulong Gpa2Hva(ulong addr)
     {
+        // Skip invalid addresses
+        if (addr == 0 || addr == ulong.MaxValue)
+        {
+            return 0;
+        }
+
         var cmd = new Dictionary<string, object>
         {
             {"execute", "human-monitor-command"},
@@ -367,7 +377,22 @@ public class QmpProxy
         var dataString = string.Join(" ",
             Array.ConvertAll(lines,
                 l => l.Contains(" is ") ? l.Split(new[] {" is "}, StringSplitOptions.None)[1] : string.Empty)).Trim();
-        return Convert.ToUInt64(dataString, 16);
+
+        if (string.IsNullOrEmpty(dataString))
+        {
+            Console.WriteLine($"Warning: Could not convert GPA 0x{addr:X} to HVA.");
+            return 0;
+        }
+
+        try
+        {
+            return Convert.ToUInt64(dataString, 16);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Error parsing HVA from '{dataString}': {ex.Message}");
+            return 0;
+        }
     }
 
     public ulong Gpa2Hpa(ulong addr)
@@ -385,6 +410,13 @@ public class QmpProxy
 
     public ulong Gva2Gpa(ulong addr)
     {
+        // Validate address before attempting translation
+        if (addr == 0 || addr == ulong.MaxValue)
+        {
+            Console.WriteLine($"Skipping invalid GVA address: {addr}");
+            return 0;
+        }
+
         var cmd = new Dictionary<string, object>
         {
             {"execute", "human-monitor-command"},
@@ -403,8 +435,9 @@ public class QmpProxy
         }
         else
         {
-            Console.WriteLine($"Error converting GVA {addr} to GPA (got {response})");
-            throw new Exception($"Error converting GVA {addr} to GPA.");
+            // Return 0 instead of throwing to allow graceful recovery
+            Console.WriteLine($"Warning: Could not convert GVA 0x{addr:X} to GPA. Game may not be fully loaded.");
+            return 0;
         }
     }
 
