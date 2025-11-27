@@ -1,6 +1,19 @@
 let client = new websocket_client();
 let current_id = 0;
 
+// Team color mapping
+const teamColors = {
+    '_game_team_red': '#FF4444',
+    '_game_team_blue': '#4488FF',
+    '_game_team_yellow': '#FFFF44',
+    '_game_team_green': '#44FF44',
+    '_game_team_purple': '#AA44AA',
+    '_game_team_orange': '#FF8844',
+    '_game_team_brown': '#8B4513',
+    '_game_team_pink': '#FF69B4',
+    '_game_team_neutral': '#AAAAAA'
+};
+
 // Weapon name to icon file mapping
 const weaponIcons = {
     'Guardians': 'Guardians.png',
@@ -48,8 +61,14 @@ const weaponIcons = {
 
 client.add_message_recieved_callback('kill_feed_push', (killData) => {
     const killer = killData.killer;
+    const killerTeam = killData.killer_team || '';
     const victim = killData.victim;
+    const victimTeam = killData.victim_team || '';
     const weapon = killData.weapon;
+
+    // Get team colors (default to white if no team)
+    const killerColor = teamColors[killerTeam] || '#FFFFFF';
+    const victimColor = teamColors[victimTeam] || '#FFFFFF';
 
     // Get weapon icon
     const weaponIcon = weaponIcons[weapon] || 'Guardians.png';
@@ -60,9 +79,9 @@ client.add_message_recieved_callback('kill_feed_push', (killData) => {
     entry.id = 'kill_' + current_id;
 
     entry.innerHTML = `
-        <span class="victim">${victim}</span>
+        <span class="victim" style="color: ${victimColor};">${victim}</span>
         <span class="killed-text">killed by</span>
-        <span class="killer">${killer}</span>
+        <span class="killer" style="color: ${killerColor};">${killer}</span>
         <img class="weapon-icon" src="Weapons/${weaponIcon}" alt="${weapon}" />
     `;
 

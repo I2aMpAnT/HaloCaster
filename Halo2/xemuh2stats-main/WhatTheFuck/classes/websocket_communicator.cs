@@ -53,12 +53,14 @@ namespace WhatTheFuck.classes
             return JsonConvert.SerializeObject(new websocket_response<string>("game_event_push", "", game_event));
         }
 
-        public static string websocket_message_send_kill(string killer, string victim, string weapon)
+        public static string websocket_message_send_kill(string killer, string killerTeam, string victim, string victimTeam, string weapon)
         {
             var killData = new Dictionary<string, string>
             {
                 { "killer", killer },
+                { "killer_team", killerTeam },
                 { "victim", victim },
+                { "victim_team", victimTeam },
                 { "weapon", weapon }
             };
             return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, string>>("kill_feed_push", "", killData));
@@ -425,9 +427,21 @@ namespace WhatTheFuck.classes
             string victim = real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index);
             string weapon = game_event.data.kill_event.statistic_index.ToString();
 
+            // Get team info for both players
+            string killerTeam = "";
+            string victimTeam = "";
+            try
+            {
+                var killerPlayer = real_time_player_stats.get(game_event.source_player_index);
+                var victimPlayer = real_time_player_stats.get(game_event.effected_player_index);
+                killerTeam = killerPlayer.player.team_index.ToString();
+                victimTeam = victimPlayer.player.team_index.ToString();
+            }
+            catch { }
+
             foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["kills_push"]))
             {
-                _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_kill(killer, victim, weapon));
+                _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_kill(killer, killerTeam, victim, victimTeam, weapon));
             }
         }
 

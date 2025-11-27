@@ -61,7 +61,11 @@ namespace xemuh2stats
                 string url = $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
                 using (WebClient client = new WebClient())
                 {
+                    client.Headers.Add("User-Agent", "HaloCaster/1.0");
                     byte[] imageData = client.DownloadData(url);
+                    if (imageData == null || imageData.Length == 0)
+                        return null;
+
                     using (MemoryStream ms = new MemoryStream(imageData))
                     {
                         // Create a copy of the image so it persists after stream disposal
@@ -74,8 +78,9 @@ namespace xemuh2stats
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Error loading emblem: {ex.Message}");
                 return null;
             }
         }
@@ -394,18 +399,25 @@ namespace xemuh2stats
             {
                 var player = real_time_player_stats.get(i);
 
-                // Load emblem image
-                int primaryColor = (int)player.player.profile_traits.profile.primary_color;
-                int secondaryColor = (int)player.player.profile_traits.profile.secondary_color;
-                int tertiaryColor = (int)player.player.profile_traits.profile.tertiary_color;
-                int quaternaryColor = (int)player.player.profile_traits.profile.quaternary_color;
-                int emblemForeground = (int)player.player.profile_traits.profile.emblem_info.foreground_emblem;
-                int emblemBackground = (int)player.player.profile_traits.profile.emblem_info.background_emblem;
-
-                Image emblem = GetEmblemImage(primaryColor, secondaryColor, tertiaryColor, quaternaryColor, emblemForeground, emblemBackground);
-                if (emblem != null)
+                // Load emblem image (wrapped in try-catch to prevent crashes)
+                try
                 {
-                    players_table.Rows[i].Cells[0].Value = emblem;
+                    int primaryColor = (int)player.player.profile_traits.profile.primary_color;
+                    int secondaryColor = (int)player.player.profile_traits.profile.secondary_color;
+                    int tertiaryColor = (int)player.player.profile_traits.profile.tertiary_color;
+                    int quaternaryColor = (int)player.player.profile_traits.profile.quaternary_color;
+                    int emblemForeground = (int)player.player.profile_traits.profile.emblem_info.foreground_emblem;
+                    int emblemBackground = (int)player.player.profile_traits.profile.emblem_info.background_emblem;
+
+                    Image emblem = GetEmblemImage(primaryColor, secondaryColor, tertiaryColor, quaternaryColor, emblemForeground, emblemBackground);
+                    if (emblem != null)
+                    {
+                        players_table.Rows[i].Cells[0].Value = emblem;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error setting emblem for player {i}: {ex.Message}");
                 }
 
                 players_table.Rows[i].Cells[1].Value = player.GetPlayerName();
