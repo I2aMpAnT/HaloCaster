@@ -133,9 +133,8 @@ document.addEventListener("DOMContentLoaded", function () {
 // Function to generate HTML content for the emblem image
 function getEmblemCellContent(player) {
     // Construct the emblem URL using player emblem values
-    // P/S = emblem primary/secondary colors (stored as tertiary/quaternary in Halo 2)
-    // EP/ES = emblem detail colors (stored as primary/secondary in Halo 2)
-    const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/index.php?P=${player.tertiary_color}&S=${player.quaternary_color}&EP=${player.primary_color}&ES=${player.secondary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
+    // P/S = background colors, EP/ES = emblem (foreground) colors
+    const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/index.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
 
     // Return emblem image
     return `<img src="${emblem_url}" style="max-height: 44px;" alt="Emblem" />`;
