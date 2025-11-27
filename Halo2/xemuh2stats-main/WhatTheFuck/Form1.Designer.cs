@@ -328,7 +328,7 @@
             this.xemu_path_text_box.Name = "xemu_path_text_box";
             this.xemu_path_text_box.Size = new System.Drawing.Size(361, 20);
             this.xemu_path_text_box.TabIndex = 2;
-            this.xemu_path_text_box.Text = "F:\\xemu";
+            this.xemu_path_text_box.Text = "";
             // 
             // label3
             // 
@@ -905,7 +905,7 @@
             this.Controls.Add(this.main_tab_control);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "Form1";
-            this.Text = "I hate my life";
+            this.Text = "I Hate My Life";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.main_tab_control.ResumeLayout(false);
             this.setup_tab_page.ResumeLayout(false);
