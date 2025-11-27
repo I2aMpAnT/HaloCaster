@@ -905,7 +905,7 @@
             this.Controls.Add(this.main_tab_control);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "Form1";
-            this.Text = "I Hate My Life";
+            this.Text = "I hate my life";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.main_tab_control.ResumeLayout(false);
             this.setup_tab_page.ResumeLayout(false);
