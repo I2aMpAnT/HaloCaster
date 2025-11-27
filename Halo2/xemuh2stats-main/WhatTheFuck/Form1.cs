@@ -634,19 +634,19 @@ namespace xemuh2stats
             var testRead = Program.memory.ReadMemory(false, (long)translated_base, 16);
             Console.WriteLine($"DEBUG: First 16 bytes at translated_base: {BitConverter.ToString(testRead)}");
 
-            // The XBE base offset might need adjustment. Let's try without it first.
-            // XBE loads at 0x00010000 in Xbox virtual space, which maps to physical 0x10000
-            // So from 0x80000000 base, the XBE should be at offset 0x10000 (not 0x5C000)
-            // But 0x5C000 might be for a specific memory layout. Let's test both.
+            // The 0x5C000 XBE offset appears to be WRONG for current XEMU version.
+            // Testing shows we're getting invalid pointers (0xFF202024 instead of 0x8xxxxxxx).
+            // The offsets (0x35A44F4 etc.) may already be complete offsets from 0x80000000.
+            // REMOVING the 0x5C000 offset to test.
 
-            var host_base_executable_address = (long)translated_base + 0x5C000;
-            Console.WriteLine($"DEBUG: host_base_executable_address (with 0x5C000) = 0x{host_base_executable_address:X}");
+            var host_base_executable_address = (long)translated_base; // REMOVED + 0x5C000
+            Console.WriteLine($"DEBUG: host_base_executable_address (NO 0x5C000 offset) = 0x{host_base_executable_address:X}");
 
             // Read some test bytes at the calculated executable base
             var testExeRead = Program.memory.ReadMemory(false, host_base_executable_address, 16);
             Console.WriteLine($"DEBUG: First 16 bytes at host_base_executable_address: {BitConverter.ToString(testExeRead)}");
 
-            UpdateHookStatus($"Step 5b: Base=0x{translated_base:X} + 0x5C000 = 0x{host_base_executable_address:X}");
+            UpdateHookStatus($"Step 5b: Base=0x{translated_base:X} (no XBE offset)");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
