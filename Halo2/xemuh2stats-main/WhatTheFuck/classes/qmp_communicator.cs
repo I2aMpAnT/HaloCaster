@@ -360,8 +360,8 @@ public class QmpProxy
 
     public ulong Gpa2Hva(ulong addr)
     {
-        // Skip invalid addresses
-        if (addr == 0 || addr == ulong.MaxValue)
+        // Skip only truly invalid addresses (GPA 0 is valid for Xbox - RAM starts at physical 0)
+        if (addr == ulong.MaxValue)
         {
             return 0;
         }
