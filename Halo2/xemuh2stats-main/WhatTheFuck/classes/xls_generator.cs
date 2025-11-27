@@ -265,6 +265,7 @@ namespace xemuh2stats.classes
             "kills",
             "assists",
             "deaths",
+            "headshots",
             "betrayals",
             "suicides",
             "best_spree",
@@ -304,6 +305,13 @@ namespace xemuh2stats.classes
                 AddNumberToRow(playerRow, player.game_stats.kills);
                 AddNumberToRow(playerRow, player.game_stats.assists);
                 AddNumberToRow(playerRow, player.game_stats.deaths);
+                // Calculate total headshots from all weapons
+                int totalHeadshots = 0;
+                foreach (var weapon in player.weapon_stats.Values)
+                {
+                    totalHeadshots += weapon.head_shots;
+                }
+                AddNumberToRow(playerRow, totalHeadshots);
                 AddNumberToRow(playerRow, player.game_stats.betrayals);
                 AddNumberToRow(playerRow, player.game_stats.suicides);
                 AddNumberToRow(playerRow, player.game_stats.best_spree);
