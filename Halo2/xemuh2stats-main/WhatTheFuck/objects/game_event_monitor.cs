@@ -128,10 +128,11 @@ namespace WhatTheFuck.objects
     {
         private static Dictionary<uint, long> address_cache = new Dictionary<uint, long>();
         private static List<Action<string>> event_callbacks = new List<Action<string>>();
+        private static List<Action<s_game_result_event>> raw_event_callbacks = new List<Action<s_game_result_event>>();
         private static uint last_event_record_id = 0;
         private static uint start_time = 0;
         private static DateTime start;
-        
+
         public static Dictionary<uint, s_game_result_event> event_log = new Dictionary<uint, s_game_result_event>();
 
         public static void reset()
@@ -187,6 +188,10 @@ namespace WhatTheFuck.objects
                     {
                         eventCallback.Invoke(format_event(gameEvent));
                     }
+                    foreach (var rawCallback in raw_event_callbacks)
+                    {
+                        rawCallback.Invoke(gameEvent);
+                    }
                 }
 
                 last_event_record_id = memEventCount;
@@ -196,6 +201,11 @@ namespace WhatTheFuck.objects
         public static void add_event_callbaack(Action<string> callback)
         {
             event_callbacks.Add(callback);
+        }
+
+        public static void add_raw_event_callback(Action<s_game_result_event> callback)
+        {
+            raw_event_callbacks.Add(callback);
         }
 
         public static string format_event(uint event_id)

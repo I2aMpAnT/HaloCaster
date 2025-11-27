@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="websocket_client.js"></script>
+        <script src="config.js"></script>
+        <script src="app-kill-feed.js"></script>
+        <style>
+            @font-face {
+                font-family: 'UniversCondensedBold';
+                src: url('univers67condensedbold.otf') format('opentype');
+                font-weight: bold;
+                font-style: normal;
+            }
+
+            body {
+                font-family: 'UniversCondensedBold', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 18px;
+                margin: 0;
+                padding: 10px;
+                background-color: transparent;
+                color: white;
+            }
+
+            #kill-feed-container {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 5px;
+                position: fixed;
+                top: 10px;
+                right: 10px;
+            }
+
+            .kill-entry {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.7) 20%, rgba(0, 0, 0, 0.8) 100%);
+                padding: 6px 12px;
+                border-radius: 4px;
+                animation: slideIn 0.3s ease-out;
+                white-space: nowrap;
+            }
+
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            .victim {
+                color: #FF6B6B;
+                font-weight: bold;
+                text-shadow: 1px 1px 2px black;
+            }
+
+            .killed-text {
+                color: #AAAAAA;
+                font-size: 14px;
+            }
+
+            .killer {
+                color: #6BCB77;
+                font-weight: bold;
+                text-shadow: 1px 1px 2px black;
+            }
+
+            .weapon-icon {
+                height: 24px;
+                filter: drop-shadow(1px 1px 2px black);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="kill-feed-container"></div>
+    </body>
+</html>

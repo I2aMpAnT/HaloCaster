@@ -53,6 +53,17 @@ namespace WhatTheFuck.classes
             return JsonConvert.SerializeObject(new websocket_response<string>("game_event_push", "", game_event));
         }
 
+        public static string websocket_message_send_kill(string killer, string victim, string weapon)
+        {
+            var killData = new Dictionary<string, string>
+            {
+                { "killer", killer },
+                { "victim", victim },
+                { "weapon", weapon }
+            };
+            return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, string>>("kill_feed_push", "", killData));
+        }
+
         public static string websocket_message_get_variant_details(Dictionary<string, string> arguments)
         {
             return JsonConvert.SerializeObject(
@@ -393,6 +404,7 @@ namespace WhatTheFuck.classes
             _server.OnClientDisconnected += _server_OnClientDisconnected;
             _server.OnSendMessage += _server_OnSendMessage;
             game_event_monitor.add_event_callbaack(_server_on_game_event_update);
+            game_event_monitor.add_raw_event_callback(_server_on_raw_game_event);
         }
 
         public static void _server_on_game_event_update(string game_event)
@@ -400,6 +412,22 @@ namespace WhatTheFuck.classes
             foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["events_push"]))
             {
                 _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_event(game_event));
+            }
+        }
+
+        public static void _server_on_raw_game_event(s_game_result_event game_event)
+        {
+            // Only process kill events for the kill feed
+            if (game_event.type != e_game_results_event_type._game_results_event_type_kill)
+                return;
+
+            string killer = real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index);
+            string victim = real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index);
+            string weapon = game_event.data.kill_event.statistic_index.ToString();
+
+            foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["kills_push"]))
+            {
+                _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_kill(killer, victim, weapon));
             }
         }
 
