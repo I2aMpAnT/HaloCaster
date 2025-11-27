@@ -621,32 +621,70 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
-            UpdateHookStatus("Step 5b: Translating base address (0x80000000)...");
+            UpdateHookStatus("Step 5b: Finding Xbox RAM in XEMU process...");
 
-            // xemu base_address + xbe base_address
-            var translated_base = Program.qmp.Translate(0x80000000);
+            // Try QMP translation first
+            ulong translated_base = 0;
+            try
+            {
+                translated_base = Program.qmp.Translate(0x80000000);
+                Console.WriteLine($"DEBUG: QMP Translate(0x80000000) = 0x{translated_base:X}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: QMP translation failed: {ex.Message}");
+            }
 
-            // Debug: Show translation details
-            Console.WriteLine($"DEBUG: Translate(0x80000000) = 0x{translated_base:X}");
+            // Also try to find Xbox RAM by scanning memory regions (64MB = 0x4000000, 128MB = 0x8000000)
+            var regions = Program.memory.QueryMemoryRegions();
+            Console.WriteLine($"DEBUG: Found {regions.Count} memory regions");
 
-            // Try to read first few bytes at translated_base to verify it's valid Xbox memory
-            // Xbox memory at 0x80000000 should have specific signature patterns
-            var testRead = Program.memory.ReadMemory(false, (long)translated_base, 16);
-            Console.WriteLine($"DEBUG: First 16 bytes at translated_base: {BitConverter.ToString(testRead)}");
+            long? xboxRamBase = null;
+            foreach (var region in regions)
+            {
+                // Look for 64MB or 128MB regions (Xbox RAM)
+                if (region.RegionSize == 0x4000000 || region.RegionSize == 0x8000000)
+                {
+                    Console.WriteLine($"DEBUG: Found potential Xbox RAM region at 0x{region.BaseAddress.ToInt64():X}, size=0x{region.RegionSize:X}, protect={region.Protect}");
 
-            // The 0x5C000 XBE offset appears to be WRONG for current XEMU version.
-            // Testing shows we're getting invalid pointers (0xFF202024 instead of 0x8xxxxxxx).
-            // The offsets (0x35A44F4 etc.) may already be complete offsets from 0x80000000.
-            // REMOVING the 0x5C000 offset to test.
+                    // Try to read from this region and check if it looks like Xbox memory
+                    var testBytes = Program.memory.ReadMemory(false, region.BaseAddress.ToInt64(), 16);
+                    Console.WriteLine($"DEBUG: First 16 bytes: {BitConverter.ToString(testBytes)}");
 
-            var host_base_executable_address = (long)translated_base; // REMOVED + 0x5C000
-            Console.WriteLine($"DEBUG: host_base_executable_address (NO 0x5C000 offset) = 0x{host_base_executable_address:X}");
+                    // If we haven't found a candidate yet, use this one
+                    if (xboxRamBase == null)
+                    {
+                        xboxRamBase = region.BaseAddress.ToInt64();
+                    }
+                }
+            }
+
+            // Use memory scan result if QMP failed or returned suspicious value
+            long host_base_executable_address;
+            if (xboxRamBase.HasValue && (translated_base == 0 || translated_base == ulong.MaxValue))
+            {
+                host_base_executable_address = xboxRamBase.Value;
+                Console.WriteLine($"DEBUG: Using memory scan result: 0x{host_base_executable_address:X}");
+            }
+            else
+            {
+                host_base_executable_address = (long)translated_base;
+                Console.WriteLine($"DEBUG: Using QMP translation result: 0x{host_base_executable_address:X}");
+            }
+
+            // Show both for comparison
+            if (xboxRamBase.HasValue)
+            {
+                Console.WriteLine($"DEBUG: Memory scan found Xbox RAM at: 0x{xboxRamBase.Value:X}");
+                Console.WriteLine($"DEBUG: QMP says Xbox RAM is at: 0x{translated_base:X}");
+                Console.WriteLine($"DEBUG: Difference: {(long)translated_base - xboxRamBase.Value} bytes");
+            }
 
             // Read some test bytes at the calculated executable base
             var testExeRead = Program.memory.ReadMemory(false, host_base_executable_address, 16);
             Console.WriteLine($"DEBUG: First 16 bytes at host_base_executable_address: {BitConverter.ToString(testExeRead)}");
 
-            UpdateHookStatus($"Step 5b: Base=0x{translated_base:X} (no XBE offset)");
+            UpdateHookStatus($"Step 5b: Base=0x{host_base_executable_address:X}");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
