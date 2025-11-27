@@ -57,6 +57,7 @@
             this.xemu_launch_button = new System.Windows.Forms.Button();
             this.players_tab_page = new System.Windows.Forms.TabPage();
             this.players_table = new System.Windows.Forms.DataGridView();
+            this.column_player_emblem = new System.Windows.Forms.DataGridViewImageColumn();
             this.column_player_name = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_player_team = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_player_score = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -439,6 +440,7 @@
             this.players_table.AllowUserToDeleteRows = false;
             this.players_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.players_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.column_player_emblem,
             this.column_player_name,
             this.column_player_team,
             this.column_player_score,
@@ -451,9 +453,17 @@
             this.players_table.ReadOnly = true;
             this.players_table.Size = new System.Drawing.Size(756, 599);
             this.players_table.TabIndex = 0;
-            // 
+            //
+            // column_player_emblem
+            //
+            this.column_player_emblem.HeaderText = "Emblem";
+            this.column_player_emblem.Name = "column_player_emblem";
+            this.column_player_emblem.ReadOnly = true;
+            this.column_player_emblem.Width = 44;
+            this.column_player_emblem.ImageLayout = System.Windows.Forms.DataGridViewImageCellLayout.Zoom;
+            //
             // column_player_name
-            // 
+            //
             this.column_player_name.HeaderText = "Player Name";
             this.column_player_name.Name = "column_player_name";
             this.column_player_name.ReadOnly = true;
@@ -1062,6 +1072,7 @@
         private System.Windows.Forms.TextBox obs_accuracy_source_text_box;
         private System.Windows.Forms.DataGridViewComboBoxColumn obs_scene_player_scene_column;
         private System.Windows.Forms.DataGridViewComboBoxColumn obs_scene_player_name_column;
+        private System.Windows.Forms.DataGridViewImageColumn column_player_emblem;
         private System.Windows.Forms.DataGridViewTextBoxColumn column_player_name;
         private System.Windows.Forms.DataGridViewTextBoxColumn column_player_team;
         private System.Windows.Forms.DataGridViewTextBoxColumn column_player_score;

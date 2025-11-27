@@ -138,6 +138,19 @@
             });
         });
 
+        // Team color mapping
+        const teamColors = {
+            '_game_team_red': '#FF4444',
+            '_game_team_blue': '#4444FF',
+            '_game_team_yellow': '#FFFF44',
+            '_game_team_green': '#44FF44',
+            '_game_team_purple': '#AA44AA',
+            '_game_team_orange': '#FF8844',
+            '_game_team_brown': '#8B4513',
+            '_game_team_pink': '#FF69B4',
+            '_game_team_neutral': '#AAAAAA'
+        };
+
         // Function to draw the minimap
         function drawMinimap() {
             // Clear the canvas
@@ -149,6 +162,8 @@
                 const x = player.X; // X coordinate in world units
                 const y = player.Y; // Y coordinate in world units
                 const z = player.Z; // Z coordinate in world units (affects circle size)
+                const team = player.team || '_game_team_neutral';
+                const playerIndex = player.player_index !== undefined ? player.player_index : -1;
 
                 // Convert world coordinates to canvas coordinates
                 const canvasX = halfCanvasSize + x * scale;
@@ -158,18 +173,25 @@
                 const normalizedZ = (z - zMin) / (zMax - zMin); // Range [0, 1]
                 const circleSize = normalizedZ * (circleMaxSize - circleMinSize) + circleMinSize;
 
+                // Get team color
+                const color = teamColors[team] || '#FFFFFF';
+
                 // Draw the player as a circle
                 ctx.beginPath();
                 ctx.arc(canvasX, canvasY, circleSize, 0, 2 * Math.PI);
-                ctx.fillStyle = 'blue';
+                ctx.fillStyle = color;
                 ctx.fill();
+
+                // Draw player index number
+                if (playerIndex >= 0) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText((playerIndex + 1).toString(), canvasX, canvasY);
+                }
             }
         }
     </script>
 </body>
 </html>
-
-
-#modify location message to include player's team (for color), their index for numbering, and maybe direction theyh are looking if possible?
-#work on integrating map backgrounds
-	#can we use constant xyz across all maps or nah?

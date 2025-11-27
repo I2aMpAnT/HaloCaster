@@ -259,13 +259,23 @@ namespace WhatTheFuck.classes
                 }
                 case "location":
                 {
-                    Dictionary<string, Vector3> result = new Dictionary<string, Vector3>();
+                    Dictionary<string, Dictionary<string, object>> result = new Dictionary<string, Dictionary<string, object>>();
                     for (int i = 0; i < player_count; i++)
                     {
                         s_game_state_player _player = game_state_player.get(i);
-                        result.Add(game_state_player.name(i), game_state_object.get_object_position(_player.unit_index));
+                        real_time_player_stats real_player = real_time_player_stats.get(i);
+                        Vector3 position = game_state_object.get_object_position(_player.unit_index);
+
+                        Dictionary<string, object> playerData = new Dictionary<string, object>();
+                        playerData.Add("X", position.X);
+                        playerData.Add("Y", position.Y);
+                        playerData.Add("Z", position.Z);
+                        playerData.Add("team", real_player.player.team_index.ToString());
+                        playerData.Add("player_index", i);
+
+                        result.Add(game_state_player.name(i), playerData);
                     }
-                    return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, Vector3>>("get_players", arguments["type"], result));
+                    return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, Dictionary<string, object>>>("get_players", arguments["type"], result));
                 }
                 case "scoreboard":
                 {

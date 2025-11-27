@@ -27,6 +27,7 @@ using DocumentFormat.OpenXml;
 using System.Numerics;
 using WhatTheFuck.extensions;
 using WhatTheFuck.objects;
+using System.Net;
 
 
 namespace xemuh2stats
@@ -39,11 +40,41 @@ namespace xemuh2stats
 
         public static bool time_lock = false;
         public static DateTime StartTime;
-        
+
 
         public static Process xemu_proccess;
 
         public static List<real_time_player_stats> real_time_cache = new List<real_time_player_stats>();
+
+        // Emblem cache to avoid repeated downloads
+        private static Dictionary<string, Image> emblemCache = new Dictionary<string, Image>();
+
+        private Image GetEmblemImage(int primaryColor, int secondaryColor, int tertiaryColor, int quaternaryColor, int emblemForeground, int emblemBackground)
+        {
+            string cacheKey = $"{primaryColor}_{secondaryColor}_{tertiaryColor}_{quaternaryColor}_{emblemForeground}_{emblemBackground}";
+
+            if (emblemCache.ContainsKey(cacheKey))
+                return emblemCache[cacheKey];
+
+            try
+            {
+                string url = $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/index.php?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
+                using (WebClient client = new WebClient())
+                {
+                    byte[] imageData = client.DownloadData(url);
+                    using (MemoryStream ms = new MemoryStream(imageData))
+                    {
+                        Image img = Image.FromStream(ms);
+                        emblemCache[cacheKey] = img;
+                        return img;
+                    }
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
 
         public Form1()
@@ -358,28 +389,43 @@ namespace xemuh2stats
             for (int i = 0; i < test_player_count; i++)
             {
                 var player = real_time_player_stats.get(i);
-                players_table.Rows[i].Cells[0].Value = player.GetPlayerName();
-                players_table.Rows[i].Cells[1].Value = player.player.team_index.GetDisplayName();
+
+                // Load emblem image
+                int primaryColor = (int)player.player.profile_traits.profile.primary_color;
+                int secondaryColor = (int)player.player.profile_traits.profile.secondary_color;
+                int tertiaryColor = (int)player.player.profile_traits.profile.tertiary_color;
+                int quaternaryColor = (int)player.player.profile_traits.profile.quaternary_color;
+                int emblemForeground = (int)player.player.profile_traits.profile.emblem_info.foreground_emblem;
+                int emblemBackground = (int)player.player.profile_traits.profile.emblem_info.background_emblem;
+
+                Image emblem = GetEmblemImage(primaryColor, secondaryColor, tertiaryColor, quaternaryColor, emblemForeground, emblemBackground);
+                if (emblem != null)
+                {
+                    players_table.Rows[i].Cells[0].Value = emblem;
+                }
+
+                players_table.Rows[i].Cells[1].Value = player.GetPlayerName();
+                players_table.Rows[i].Cells[2].Value = player.player.team_index.GetDisplayName();
 
                 switch (variant.game_type)
                 {
                     case game_type.capture_the_flag:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.ctf_scores;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.ctf_scores;
                         break;
                     case game_type.slayer:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.kills;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.kills;
                         break;
                     case game_type.oddball:
                         if (player.game_stats.oddball_score > 0)
                         {
                             try
                             {
-                                players_table.Rows[i].Cells[2].Value =
+                                players_table.Rows[i].Cells[3].Value =
                                     TimeSpan.FromSeconds(player.game_stats.oddball_score).ToString("mm:ss");
                             }
                             catch (Exception)
                             {
-                                players_table.Rows[i].Cells[2].Value = player.game_stats.oddball_score;
+                                players_table.Rows[i].Cells[3].Value = player.game_stats.oddball_score;
                             }
                         }
 
@@ -388,51 +434,51 @@ namespace xemuh2stats
                     {
                         try
                         {
-                            players_table.Rows[i].Cells[2].Value =
+                            players_table.Rows[i].Cells[3].Value =
                                 TimeSpan.FromSeconds(player.game_stats.oddball_score).ToString("mm:ss");
                         }
                         catch (Exception)
                         {
-                            players_table.Rows[i].Cells[2].Value = player.game_stats.oddball_score;
+                            players_table.Rows[i].Cells[3].Value = player.game_stats.oddball_score;
                         }
                     }
                         break;
                     case game_type.juggernaut:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.kills_as_juggernaut;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.kills_as_juggernaut;
                         break;
                     case game_type.territories:
                     {
                         try
                         {
-                            players_table.Rows[i].Cells[2].Value =
+                            players_table.Rows[i].Cells[3].Value =
                                 TimeSpan.FromSeconds(player.game_stats.oddball_score).ToString("mm:ss");
                         }
                         catch (Exception)
                         {
-                            players_table.Rows[i].Cells[2].Value = player.game_stats.oddball_score;
+                            players_table.Rows[i].Cells[3].Value = player.game_stats.oddball_score;
                         }
                     }
                         break;
                     case game_type.assault:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.assault_score;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.assault_score;
                         break;
                     default:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.kills;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.kills;
                         break;
                 }
 
-                players_table.Rows[i].Cells[3].Value = player.game_stats.kills;
-                players_table.Rows[i].Cells[4].Value = player.game_stats.deaths;
-                players_table.Rows[i].Cells[5].Value = player.game_stats.assists;
+                players_table.Rows[i].Cells[4].Value = player.game_stats.kills;
+                players_table.Rows[i].Cells[5].Value = player.game_stats.deaths;
+                players_table.Rows[i].Cells[6].Value = player.game_stats.assists;
                 if (player.game_stats.deaths > 0)
                 {
                     float kda = (float) (player.game_stats.kills + player.game_stats.assists) /
                                 player.game_stats.deaths;
-                    players_table.Rows[i].Cells[6].Value = Math.Round(kda, 3);
+                    players_table.Rows[i].Cells[7].Value = Math.Round(kda, 3);
                 }
                 else
                 {
-                    players_table.Rows[i].Cells[6].Value = player.game_stats.kills + player.game_stats.assists;
+                    players_table.Rows[i].Cells[7].Value = player.game_stats.kills + player.game_stats.assists;
                 }
             }
         }
