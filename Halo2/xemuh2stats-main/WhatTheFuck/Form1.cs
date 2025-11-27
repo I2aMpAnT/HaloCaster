@@ -79,8 +79,9 @@ namespace xemuh2stats
                 configuration_combo_box.Items.Add(configuration.name);
             }
 
-            main_tab_control.TabPages.RemoveAt(1);
-            main_tab_control.TabPages.RemoveAt(1);
+            main_tab_control.TabPages.RemoveAt(1);  // Remove players_tab_page
+            main_tab_control.TabPages.RemoveAt(1);  // Remove identity_tab_page
+            main_tab_control.TabPages.RemoveAt(1);  // Remove weapon_stats_tab
 
             weapon_player_select.Tag = 0;
 
@@ -582,6 +583,7 @@ namespace xemuh2stats
             Program.game_state_resolver["game_ending"].address = (long)game_state_players_addr - 0x1E8;
 
             main_tab_control.TabPages.Add(players_tab_page);
+            main_tab_control.TabPages.Add(identity_tab_page);
             main_tab_control.TabPages.Add(weapon_stats_tab);
         }
 
