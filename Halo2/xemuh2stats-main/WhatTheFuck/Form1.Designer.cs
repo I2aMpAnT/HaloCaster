@@ -114,6 +114,7 @@
             this.variant_status_label = new System.Windows.Forms.ToolStripStatusLabel();
             this.game_type_status_label = new System.Windows.Forms.ToolStripStatusLabel();
             this.map_status_label = new System.Windows.Forms.ToolStripStatusLabel();
+            this.hook_status_label = new System.Windows.Forms.ToolStripStatusLabel();
             this.events_tab_page = new System.Windows.Forms.TabPage();
             this.game_events_text_box = new System.Windows.Forms.RichTextBox();
             this.main_tab_control.SuspendLayout();
@@ -905,6 +906,7 @@
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.hook_status_label,
             this.life_cycle_status_label,
             this.variant_status_label,
             this.game_type_status_label,
@@ -916,9 +918,15 @@
             this.statusStrip1.SizingGrip = false;
             this.statusStrip1.TabIndex = 5;
             this.statusStrip1.Text = "statusStrip1";
-            // 
+            //
+            // hook_status_label
+            //
+            this.hook_status_label.Name = "hook_status_label";
+            this.hook_status_label.Size = new System.Drawing.Size(42, 17);
+            this.hook_status_label.Text = "Ready";
+            //
             // life_cycle_status_label
-            // 
+            //
             this.life_cycle_status_label.Name = "life_cycle_status_label";
             this.life_cycle_status_label.Size = new System.Drawing.Size(61, 17);
             this.life_cycle_status_label.Text = "Life Cycle:";
@@ -1020,6 +1028,7 @@
         private System.Windows.Forms.ToolStripStatusLabel variant_status_label;
         private System.Windows.Forms.ToolStripStatusLabel game_type_status_label;
         private System.Windows.Forms.ToolStripStatusLabel map_status_label;
+        private System.Windows.Forms.ToolStripStatusLabel hook_status_label;
         private System.Windows.Forms.DataGridViewTextBoxColumn weapon_name_coluimn;
         private System.Windows.Forms.DataGridViewTextBoxColumn weapon_kills_column;
         private System.Windows.Forms.DataGridViewTextBoxColumn weapon_headshot_column;

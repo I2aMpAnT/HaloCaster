@@ -594,6 +594,8 @@ namespace xemuh2stats
 
         private void resolve_addresses()
         {
+            UpdateHookStatus("Step 5a: Setting up offset resolvers...");
+
             // offsets are host (host virtual address - host_base_executable_address)
             Program.exec_resolver.Add(new offset_resolver_item("game_stats", 0x35ADF02, ""));
             Program.exec_resolver.Add(new offset_resolver_item("weapon_stats", 0x35ADFE0, ""));
@@ -618,18 +620,24 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
+            UpdateHookStatus("Step 5b: Translating base address (0x80000000)...");
+
             // xemu base_address + xbe base_address
             var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
+            UpdateHookStatus($"Step 5b: Base addr = 0x{host_base_executable_address:X}");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
                 offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
             }
 
+            UpdateHookStatus("Step 5c: Reading game state pointers...");
             var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
             var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
             var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+
+            UpdateHookStatus("Step 5d: Waiting for game to load...");
 
             // Wait for game to load (tags address becomes non-zero)
             int waitAttempts = 0;
@@ -639,13 +647,19 @@ namespace xemuh2stats
                 Application.DoEvents(); // Keep UI responsive
                 game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
                 waitAttempts++;
+                if (waitAttempts % 10 == 0) // Update every second
+                {
+                    UpdateHookStatus($"Step 5d: Waiting for game... ({waitAttempts / 10}s)");
+                }
                 if (waitAttempts > 600) // 60 second timeout
                 {
+                    UpdateHookStatus("Timeout - game not loaded");
                     MessageBox.Show("Timeout waiting for game to load. Please load a game in XEMU and try again.", "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
 
+            UpdateHookStatus("Step 5e: Finalizing game state addresses...");
             var game_state_tags_addr = Program.qmp.Translate(game_state_offset);
 
             Program.game_state_resolver["game_state_players"].address = (long) game_state_players_addr;
@@ -659,6 +673,12 @@ namespace xemuh2stats
             main_tab_control.TabPages.Add(weapon_stats_tab);
         }
 
+        private void UpdateHookStatus(string status)
+        {
+            hook_status_label.Text = status;
+            Application.DoEvents();
+        }
+
         private void xemu_launch_button_Click(object sender, EventArgs e)
         {
             if (!string.IsNullOrEmpty(xemu_path_text_box.Text))
@@ -666,24 +686,44 @@ namespace xemuh2stats
                 var xemu_path = FindFileInDirectory(xemu_path_text_box.Text, "xemu.exe");
                 if (!string.IsNullOrEmpty(xemu_path))
                 {
-                    ProcessStartInfo startInfo = new ProcessStartInfo
+                    try
                     {
-                        FileName = xemu_path,
-                        Arguments = $"-qmp tcp:localhost:{int.Parse(xemu_port_text_box.Text)},server,nowait",
-                    };
-                    xemu_proccess = Process.Start(startInfo);
-                    System.Threading.Thread.Sleep(5000);
+                        UpdateHookStatus("Step 1: Launching XEMU...");
+                        ProcessStartInfo startInfo = new ProcessStartInfo
+                        {
+                            FileName = xemu_path,
+                            Arguments = $"-qmp tcp:localhost:{int.Parse(xemu_port_text_box.Text)},server,nowait",
+                        };
+                        xemu_proccess = Process.Start(startInfo);
 
-                    Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
+                        UpdateHookStatus("Step 2: Waiting for XEMU startup...");
+                        System.Threading.Thread.Sleep(5000);
 
-                    Program.memory = new MemoryHandler(xemu_proccess);
-                    resolve_addresses();
-                    is_valid = true;
+                        UpdateHookStatus("Step 3: Connecting to QMP...");
+                        Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
 
-                    configuration_combo_box.Enabled = false;
-                    settings_group_box.Enabled = false;
-                    xemu_launch_button.Enabled = false;
-                    websocket_communicator.start(websocket_bind_text_box.Text, websocket_bind_port_text_box.Text);
+                        UpdateHookStatus("Step 4: Attaching to process memory...");
+                        Program.memory = new MemoryHandler(xemu_proccess);
+
+                        UpdateHookStatus("Step 5: Resolving addresses...");
+                        resolve_addresses();
+
+                        UpdateHookStatus("Hooked successfully!");
+                        is_valid = true;
+
+                        configuration_combo_box.Enabled = false;
+                        settings_group_box.Enabled = false;
+                        xemu_launch_button.Enabled = false;
+
+                        UpdateHookStatus("Step 6: Starting WebSocket server...");
+                        websocket_communicator.start(websocket_bind_text_box.Text, websocket_bind_port_text_box.Text);
+                        UpdateHookStatus("Ready - Hooked");
+                    }
+                    catch (Exception ex)
+                    {
+                        UpdateHookStatus($"Error: {ex.Message}");
+                        MessageBox.Show($"Hook failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
