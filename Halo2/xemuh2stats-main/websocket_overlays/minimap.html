@@ -151,45 +151,79 @@
             '_game_team_neutral': '#AAAAAA'
         };
 
+        // Height difference threshold for showing arrows
+        const heightThreshold = 3.0;
+        const symbolSize = 8;
+
         // Function to draw the minimap
         function drawMinimap() {
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Get first player's Z as reference (or use 0)
+            let referenceZ = 0;
+            const playerNames = Object.keys(playersData);
+            if (playerNames.length > 0) {
+                referenceZ = playersData[playerNames[0]].Z || 0;
+            }
 
             // Loop through each player in playersData
             for (const playerName in playersData) {
                 const player = playersData[playerName];
                 const x = player.X; // X coordinate in world units
                 const y = player.Y; // Y coordinate in world units
-                const z = player.Z; // Z coordinate in world units (affects circle size)
+                const z = player.Z; // Z coordinate in world units
                 const team = player.team || '_game_team_neutral';
-                const playerIndex = player.player_index !== undefined ? player.player_index : -1;
 
                 // Convert world coordinates to canvas coordinates
                 const canvasX = halfCanvasSize + x * scale;
                 const canvasY = halfCanvasSize - y * scale;
 
-                // Normalize the Z value to determine circle size
-                const normalizedZ = (z - zMin) / (zMax - zMin); // Range [0, 1]
-                const circleSize = normalizedZ * (circleMaxSize - circleMinSize) + circleMinSize;
-
                 // Get team color
                 const color = teamColors[team] || '#FFFFFF';
 
-                // Draw the player as a circle
-                ctx.beginPath();
-                ctx.arc(canvasX, canvasY, circleSize, 0, 2 * Math.PI);
-                ctx.fillStyle = color;
-                ctx.fill();
+                // Determine height difference from reference player
+                const heightDiff = z - referenceZ;
 
-                // Draw player index number
-                if (playerIndex >= 0) {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 10px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText((playerIndex + 1).toString(), canvasX, canvasY);
+                ctx.fillStyle = color;
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+
+                if (heightDiff > heightThreshold) {
+                    // Player is higher - draw up arrow
+                    ctx.beginPath();
+                    ctx.moveTo(canvasX, canvasY - symbolSize);
+                    ctx.lineTo(canvasX + symbolSize, canvasY + symbolSize);
+                    ctx.lineTo(canvasX - symbolSize, canvasY + symbolSize);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (heightDiff < -heightThreshold) {
+                    // Player is lower - draw down arrow
+                    ctx.beginPath();
+                    ctx.moveTo(canvasX, canvasY + symbolSize);
+                    ctx.lineTo(canvasX + symbolSize, canvasY - symbolSize);
+                    ctx.lineTo(canvasX - symbolSize, canvasY - symbolSize);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // Player is at similar height - draw circle
+                    ctx.beginPath();
+                    ctx.arc(canvasX, canvasY, symbolSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
                 }
+
+                // Draw player name above the symbol
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.strokeText(playerName, canvasX, canvasY - symbolSize - 2);
+                ctx.fillText(playerName, canvasX, canvasY - symbolSize - 2);
             }
         }
     </script>
