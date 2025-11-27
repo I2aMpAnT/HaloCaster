@@ -375,7 +375,7 @@ namespace xemuh2stats
 
             if (weapon_player_select.SelectedIndex != -1)
             {
-                for (int i = 0; i < weapon_stat.weapon_list.Count; i++)
+                for (int i = 0; i < weapon_stat.weapon_list.Count && i < weapon_stat_table.Rows.Count; i++)
                 {
                     weapon_stat.s_weapon_stat
                         stat = weapon_stat.get_weapon_stats(weapon_player_select.SelectedIndex, i);
@@ -395,7 +395,7 @@ namespace xemuh2stats
                 Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
 
             var variant = variant_details.get();
-            for (int i = 0; i < test_player_count; i++)
+            for (int i = 0; i < test_player_count && i < players_table.Rows.Count; i++)
             {
                 var player = real_time_player_stats.get(i);
 
@@ -504,7 +504,7 @@ namespace xemuh2stats
             int test_player_count =
                 Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
 
-            for (int i = 0; i < test_player_count; i++)
+            for (int i = 0; i < test_player_count && i < identity_table.Rows.Count; i++)
             {
                 var gameStatePlayer = game_state_player.get(i);
                 string playerName = gameStatePlayer.GetPlayerName();
