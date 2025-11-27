@@ -637,13 +637,41 @@ namespace xemuh2stats
                 offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
             }
 
-            UpdateHookStatus("Step 5c: Reading game state pointers...");
+            UpdateHookStatus("Step 5c: Waiting for valid game pointers...");
 
             // Debug: Show all the intermediate values
             var players_host_addr = Program.exec_resolver["players"].address;
-            var players_ptr_value = Program.memory.ReadUInt(players_host_addr);
             Console.WriteLine($"DEBUG: exec_resolver['players'].address = 0x{players_host_addr:X}");
-            Console.WriteLine($"DEBUG: ReadUInt(players) = 0x{players_ptr_value:X}");
+
+            // Wait for valid pointer values (Xbox pointers should be in 0x80000000 range)
+            int ptrWaitAttempts = 0;
+            uint players_ptr_value = 0;
+            while (true)
+            {
+                players_ptr_value = Program.memory.ReadUInt(players_host_addr);
+                Console.WriteLine($"DEBUG: ReadUInt(players) attempt {ptrWaitAttempts} = 0x{players_ptr_value:X}");
+
+                // Valid Xbox pointer should be in kernel range (0x80000000+)
+                bool isValidPtr = players_ptr_value >= 0x80000000 && players_ptr_value < 0xF0000000 && players_ptr_value != 0xFFFFFFFF;
+
+                if (isValidPtr)
+                {
+                    Console.WriteLine($"DEBUG: Valid players pointer found: 0x{players_ptr_value:X}");
+                    break;
+                }
+
+                System.Threading.Thread.Sleep(500);
+                Application.DoEvents();
+                ptrWaitAttempts++;
+                UpdateHookStatus($"Step 5c: Waiting for valid pointers... ({ptrWaitAttempts * 0.5}s) got 0x{players_ptr_value:X}");
+
+                if (ptrWaitAttempts > 120) // 60 second timeout
+                {
+                    UpdateHookStatus($"Error: Invalid pointer 0x{players_ptr_value:X}");
+                    MessageBox.Show($"Timeout waiting for valid game pointers.\n\nGot: 0x{players_ptr_value:X}\nExpected: 0x8xxxxxxx\n\nThis may indicate:\n1. The memory offsets are wrong for your Halo 2 version\n2. The XBE base offset (0x5C000) needs adjustment\n3. XEMU version incompatibility", "Invalid Pointer", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
 
             var game_state_players_addr = Program.qmp.Translate(players_ptr_value);
             Console.WriteLine($"DEBUG: Translate(players_ptr) = 0x{game_state_players_addr:X}");
