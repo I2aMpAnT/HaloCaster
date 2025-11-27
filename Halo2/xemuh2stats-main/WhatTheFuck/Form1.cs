@@ -621,9 +621,41 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
-            UpdateHookStatus("Step 5b: Finding Xbox RAM in XEMU process...");
+            UpdateHookStatus("Step 5b: Testing QMP direct memory read...");
 
-            // Try QMP translation first
+            // NEW APPROACH: Use QMP's direct memory read instead of address translation
+            // The offsets are from Xbox base 0x80000000. Let's read directly using QMP.
+
+            // Test: Read from Xbox address 0x80000000 + players offset directly via QMP
+            ulong xbox_base = 0x80000000;
+            ulong players_xbox_addr = xbox_base + 0x35A44F4; // players offset
+
+            Console.WriteLine($"DEBUG: Testing QMP direct read at Xbox address 0x{players_xbox_addr:X}");
+
+            try
+            {
+                // Use QMP Read to read 4 bytes directly from Xbox memory
+                byte[] testQmpRead = Program.qmp.Read(players_xbox_addr, 4);
+                uint testValue = BitConverter.ToUInt32(testQmpRead, 0);
+                Console.WriteLine($"DEBUG: QMP Read(0x{players_xbox_addr:X}) = 0x{testValue:X} (bytes: {BitConverter.ToString(testQmpRead)})");
+
+                // If this returns a valid Xbox pointer, QMP direct read works!
+                if (testValue >= 0x80000000 && testValue < 0xF0000000)
+                {
+                    Console.WriteLine($"DEBUG: QMP direct read returned valid pointer! Using QMP-based reading.");
+                    UpdateHookStatus("Step 5b: QMP direct read works!");
+                }
+                else
+                {
+                    Console.WriteLine($"DEBUG: QMP direct read returned 0x{testValue:X} - not a valid pointer");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: QMP direct read failed: {ex.Message}");
+            }
+
+            // Also try QMP translation + ReadProcessMemory for comparison
             ulong translated_base = 0;
             try
             {
@@ -635,62 +667,9 @@ namespace xemuh2stats
                 Console.WriteLine($"DEBUG: QMP translation failed: {ex.Message}");
             }
 
-            // Scan memory regions to find Xbox RAM (64MB = 0x4000000, 128MB = 0x8000000)
-            var regions = Program.memory.QueryMemoryRegions();
-            Console.WriteLine($"DEBUG: Found {regions.Count} memory regions total");
-
-            // List ALL large regions for debugging
-            var largeRegions = regions.Where(r => r.RegionSize >= 0x1000000).ToList(); // 16MB+
-            Console.WriteLine($"DEBUG: Found {largeRegions.Count} regions >= 16MB:");
-            foreach (var r in largeRegions)
-            {
-                Console.WriteLine($"DEBUG:   Region at 0x{r.BaseAddress.ToInt64():X}, size=0x{r.RegionSize:X} ({r.RegionSize / 1024 / 1024}MB), protect={r.Protect}, state={r.State}");
-            }
-
-            long? xboxRamBase = null;
-            // First try exact 64MB or 128MB regions
-            foreach (var region in regions)
-            {
-                if (region.RegionSize == 0x4000000 || region.RegionSize == 0x8000000)
-                {
-                    Console.WriteLine($"DEBUG: Found exact Xbox RAM size region at 0x{region.BaseAddress.ToInt64():X}");
-                    var testBytes = Program.memory.ReadMemory(false, region.BaseAddress.ToInt64(), 16);
-                    Console.WriteLine($"DEBUG: First 16 bytes: {BitConverter.ToString(testBytes)}");
-
-                    // Check if this region has non-zero data (indicates actual RAM, not reserved space)
-                    if (testBytes.Any(b => b != 0))
-                    {
-                        xboxRamBase = region.BaseAddress.ToInt64();
-                        Console.WriteLine($"DEBUG: This region has non-zero data - using it!");
-                        break;
-                    }
-                }
-            }
-
-            // ALWAYS prefer memory scan result over QMP when found
-            long host_base_executable_address;
-            if (xboxRamBase.HasValue)
-            {
-                host_base_executable_address = xboxRamBase.Value;
-                Console.WriteLine($"DEBUG: Using memory scan result: 0x{host_base_executable_address:X}");
-            }
-            else
-            {
-                // Fall back to QMP
-                host_base_executable_address = (long)translated_base;
-                Console.WriteLine($"DEBUG: No suitable region found, using QMP result: 0x{host_base_executable_address:X}");
-            }
-
-            Console.WriteLine($"DEBUG: QMP translation returned: 0x{translated_base:X}");
-            Console.WriteLine($"DEBUG: Final host_base_executable_address: 0x{host_base_executable_address:X}");
-            if (xboxRamBase.HasValue && translated_base != 0)
-            {
-                Console.WriteLine($"DEBUG: Difference (QMP - scan): {(long)translated_base - xboxRamBase.Value} bytes (0x{((long)translated_base - xboxRamBase.Value):X})");
-            }
-
-            // Read some test bytes at the calculated executable base
-            var testExeRead = Program.memory.ReadMemory(false, host_base_executable_address, 16);
-            Console.WriteLine($"DEBUG: First 16 bytes at host_base_executable_address: {BitConverter.ToString(testExeRead)}");
+            // Use the translated base for now (we'll improve this based on what works)
+            long host_base_executable_address = (long)translated_base;
+            Console.WriteLine($"DEBUG: host_base_executable_address = 0x{host_base_executable_address:X}");
 
             UpdateHookStatus($"Step 5b: Base=0x{host_base_executable_address:X}");
 
