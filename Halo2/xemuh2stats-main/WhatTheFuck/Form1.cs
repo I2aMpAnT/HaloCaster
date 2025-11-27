@@ -53,7 +53,7 @@ namespace xemuh2stats
             // Set default Xemu path to Desktop
             if (string.IsNullOrEmpty(xemu_path_text_box.Text))
             {
-                xemu_path_text_box.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "xemu");
+                xemu_path_text_box.Text = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             }
 
             for (int i = 0; i < 16; i++)
