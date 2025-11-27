@@ -621,56 +621,12 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
-            UpdateHookStatus("Step 5b: Testing QMP direct memory read...");
+            UpdateHookStatus("Step 5b: Translating base address...");
 
-            // NEW APPROACH: Use QMP's direct memory read instead of address translation
-            // The offsets are from Xbox base 0x80000000. Let's read directly using QMP.
+            // ORIGINAL WORKING CODE: xemu base_address + xbe base_address
+            var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
 
-            // Test: Read from Xbox address 0x80000000 + players offset directly via QMP
-            ulong xbox_base = 0x80000000;
-            ulong players_xbox_addr = xbox_base + 0x35A44F4; // players offset
-
-            Console.WriteLine($"DEBUG: Testing QMP direct read at Xbox address 0x{players_xbox_addr:X}");
-
-            try
-            {
-                // Use QMP Read to read 4 bytes directly from Xbox memory
-                byte[] testQmpRead = Program.qmp.Read(players_xbox_addr, 4);
-                uint testValue = BitConverter.ToUInt32(testQmpRead, 0);
-                Console.WriteLine($"DEBUG: QMP Read(0x{players_xbox_addr:X}) = 0x{testValue:X} (bytes: {BitConverter.ToString(testQmpRead)})");
-
-                // If this returns a valid Xbox pointer, QMP direct read works!
-                if (testValue >= 0x80000000 && testValue < 0xF0000000)
-                {
-                    Console.WriteLine($"DEBUG: QMP direct read returned valid pointer! Using QMP-based reading.");
-                    UpdateHookStatus("Step 5b: QMP direct read works!");
-                }
-                else
-                {
-                    Console.WriteLine($"DEBUG: QMP direct read returned 0x{testValue:X} - not a valid pointer");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"DEBUG: QMP direct read failed: {ex.Message}");
-            }
-
-            // Also try QMP translation + ReadProcessMemory for comparison
-            ulong translated_base = 0;
-            try
-            {
-                translated_base = Program.qmp.Translate(0x80000000);
-                Console.WriteLine($"DEBUG: QMP Translate(0x80000000) = 0x{translated_base:X}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"DEBUG: QMP translation failed: {ex.Message}");
-            }
-
-            // Use the translated base for now (we'll improve this based on what works)
-            long host_base_executable_address = (long)translated_base;
-            Console.WriteLine($"DEBUG: host_base_executable_address = 0x{host_base_executable_address:X}");
-
+            Console.WriteLine($"DEBUG: Translate(0x80000000) + 0x5C000 = 0x{host_base_executable_address:X}");
             UpdateHookStatus($"Step 5b: Base=0x{host_base_executable_address:X}");
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
@@ -678,72 +634,22 @@ namespace xemuh2stats
                 offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
             }
 
-            UpdateHookStatus("Step 5c: Waiting for valid game pointers...");
+            UpdateHookStatus("Step 5c: Reading game state pointers...");
 
-            // Debug: Show all the intermediate values
-            var players_host_addr = Program.exec_resolver["players"].address;
-            Console.WriteLine($"DEBUG: exec_resolver['players'].address = 0x{players_host_addr:X}");
-
-            // Wait for valid pointer values (Xbox pointers should be in 0x80000000 range)
-            int ptrWaitAttempts = 0;
-            uint players_ptr_value = 0;
-            while (true)
-            {
-                players_ptr_value = Program.memory.ReadUInt(players_host_addr);
-                Console.WriteLine($"DEBUG: ReadUInt(players) attempt {ptrWaitAttempts} = 0x{players_ptr_value:X}");
-
-                // Valid Xbox pointer should be in kernel range (0x80000000+)
-                bool isValidPtr = players_ptr_value >= 0x80000000 && players_ptr_value < 0xF0000000 && players_ptr_value != 0xFFFFFFFF;
-
-                if (isValidPtr)
-                {
-                    Console.WriteLine($"DEBUG: Valid players pointer found: 0x{players_ptr_value:X}");
-                    break;
-                }
-
-                System.Threading.Thread.Sleep(500);
-                Application.DoEvents();
-                ptrWaitAttempts++;
-                UpdateHookStatus($"Step 5c: Waiting for valid pointers... ({ptrWaitAttempts * 0.5}s) got 0x{players_ptr_value:X}");
-
-                if (ptrWaitAttempts > 120) // 60 second timeout
-                {
-                    UpdateHookStatus($"Error: Invalid pointer 0x{players_ptr_value:X}");
-                    MessageBox.Show($"Timeout waiting for valid game pointers.\n\nGot: 0x{players_ptr_value:X}\nExpected: 0x8xxxxxxx\n\nThis may indicate:\n1. The memory offsets are wrong for your Halo 2 version\n2. The XBE base offset (0x5C000) needs adjustment\n3. XEMU version incompatibility", "Invalid Pointer", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-            }
-
-            var game_state_players_addr = Program.qmp.Translate(players_ptr_value);
-            Console.WriteLine($"DEBUG: Translate(players_ptr) = 0x{game_state_players_addr:X}");
-
-            var objects_ptr_value = Program.memory.ReadUInt(Program.exec_resolver["objects"].address);
-            Console.WriteLine($"DEBUG: ReadUInt(objects) = 0x{objects_ptr_value:X}");
-            var game_state_objects_addr = Program.qmp.Translate(objects_ptr_value);
-            Console.WriteLine($"DEBUG: Translate(objects_ptr) = 0x{game_state_objects_addr:X}");
-
-            var game_engine_ptr_value = Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address);
-            Console.WriteLine($"DEBUG: ReadUInt(game_engine_globals) = 0x{game_engine_ptr_value:X}");
-            var game_engine_addr = Program.qmp.Translate(game_engine_ptr_value);
-            Console.WriteLine($"DEBUG: Translate(game_engine_ptr) = 0x{game_engine_addr:X}");
-
+            var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
+            var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
+            var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
-            Console.WriteLine($"DEBUG: ReadUInt(tags) = 0x{game_state_offset:X}");
 
             UpdateHookStatus("Step 5d: Waiting for game to load...");
 
-            // Wait for game to load (tags address becomes non-zero)
             int waitAttempts = 0;
             while (game_state_offset == 0)
             {
                 System.Threading.Thread.Sleep(100);
-                Application.DoEvents(); // Keep UI responsive
+                Application.DoEvents();
                 game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
                 waitAttempts++;
-                if (waitAttempts % 10 == 0) // Update every second
-                {
-                    UpdateHookStatus($"Step 5d: Waiting for game... ({waitAttempts / 10}s)");
-                }
                 if (waitAttempts > 600) // 60 second timeout
                 {
                     UpdateHookStatus("Timeout - game not loaded");
