@@ -211,7 +211,6 @@ namespace WhatTheFuck.objects
         public static string format_event(s_game_result_event game_event)
         {
             string message_base = $"[{start.AddSeconds(game_event.time_stamp):h:mm:ss}]\t";
-            game_event.
 
             switch (game_event.type)
             {
