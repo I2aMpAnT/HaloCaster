@@ -155,6 +155,7 @@
         // Player model is ~2 units tall, 150% = 3 units difference triggers arrow
         const heightThreshold = 3.0;
         const symbolSize = 8;
+        const facingArrowLength = 15; // Length of facing direction arrow
 
         // Function to draw the minimap
         function drawMinimap() {
@@ -174,6 +175,7 @@
                 const x = player.X; // X coordinate in world units
                 const y = player.Y; // Y coordinate in world units
                 const z = player.Z; // Z coordinate in world units
+                const facing = player.facing || 0; // Facing angle in radians
                 const team = player.team || '_game_team_neutral';
 
                 // Convert world coordinates to canvas coordinates
@@ -215,6 +217,37 @@
                     ctx.fill();
                     ctx.stroke();
                 }
+
+                // Draw facing direction arrow
+                // facing is yaw from atan2(Y, X) in world coords
+                // Canvas Y is inverted, so we negate the Y component
+                const arrowEndX = canvasX + Math.cos(facing) * facingArrowLength;
+                const arrowEndY = canvasY - Math.sin(facing) * facingArrowLength; // Negate for canvas coords
+
+                // Draw arrow line
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(canvasX, canvasY);
+                ctx.lineTo(arrowEndX, arrowEndY);
+                ctx.stroke();
+
+                // Draw arrowhead
+                const arrowHeadSize = 5;
+                const arrowAngle = Math.atan2(canvasY - arrowEndY, canvasX - arrowEndX);
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(arrowEndX, arrowEndY);
+                ctx.lineTo(
+                    arrowEndX + arrowHeadSize * Math.cos(arrowAngle - Math.PI / 6),
+                    arrowEndY + arrowHeadSize * Math.sin(arrowAngle - Math.PI / 6)
+                );
+                ctx.lineTo(
+                    arrowEndX + arrowHeadSize * Math.cos(arrowAngle + Math.PI / 6),
+                    arrowEndY + arrowHeadSize * Math.sin(arrowAngle + Math.PI / 6)
+                );
+                ctx.closePath();
+                ctx.fill();
 
                 // Draw player name above the symbol
                 ctx.fillStyle = '#FFFFFF';

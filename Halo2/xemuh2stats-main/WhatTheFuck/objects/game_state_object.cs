@@ -49,6 +49,23 @@ namespace WhatTheFuck.objects
 
         }
 
+        public static float get_object_facing_yaw(uint object_datum)
+        {
+            var unit_addr = get_object_address(object_datum);
+
+            if (unit_addr == uint.MaxValue)
+                return 0f;
+
+            // Forward vector is at offset 0x3C (right after position at 0x30)
+            Vector3 forward = Program.memory.ReadStruct<Vector3>(unit_addr + 0x3C);
+
+            // Calculate yaw angle from forward vector (in radians)
+            // atan2(Y, X) gives us the angle in the XY plane
+            float yaw = (float)Math.Atan2(forward.Y, forward.X);
+
+            return yaw;
+        }
+
 
         public static DamageReportingType unit_object_get_weapon_type(uint unit_datum)
         {

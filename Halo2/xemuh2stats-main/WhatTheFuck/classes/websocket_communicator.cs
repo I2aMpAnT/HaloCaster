@@ -265,11 +265,13 @@ namespace WhatTheFuck.classes
                         s_game_state_player _player = game_state_player.get(i);
                         real_time_player_stats real_player = real_time_player_stats.get(i);
                         Vector3 position = game_state_object.get_object_position(_player.unit_index);
+                        float facingYaw = game_state_object.get_object_facing_yaw(_player.unit_index);
 
                         Dictionary<string, object> playerData = new Dictionary<string, object>();
                         playerData.Add("X", position.X);
                         playerData.Add("Y", position.Y);
                         playerData.Add("Z", position.Z);
+                        playerData.Add("facing", facingYaw);
                         playerData.Add("team", real_player.player.team_index.ToString());
                         playerData.Add("player_index", i);
 
