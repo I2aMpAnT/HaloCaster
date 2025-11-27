@@ -133,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // Function to generate HTML content for the emblem image
 function getEmblemCellContent(player) {
     // Construct the emblem URL using player emblem values
-    const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
+    const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/index.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
 
     // Return emblem image
     return `<img src="${emblem_url}" style="max-height: 44px;" alt="Emblem" />`;
