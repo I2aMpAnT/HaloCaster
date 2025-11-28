@@ -805,6 +805,20 @@ namespace xemuh2stats
                 !disable_rendering_check_box.Checked, false);
         }
 
+        private void profile_disabled_check_box_CheckedChanged(object sender, EventArgs e)
+        {
+            // Apply dedi mode immediately when checkbox is toggled (if hooked)
+            if (is_valid && Program.memory != null)
+            {
+                try
+                {
+                    Program.memory.WriteBool(Program.exec_resolver["profile_enabled"].address,
+                        !profile_disabled_check_box.Checked, false);
+                }
+                catch { /* Ignore errors */ }
+            }
+        }
+
         private void configuration_save_button_Click(object sender, EventArgs e)
         {
             if (configuration_combo_box.SelectedIndex == -1)

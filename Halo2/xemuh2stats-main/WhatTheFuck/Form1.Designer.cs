@@ -391,6 +391,7 @@
             this.profile_disabled_check_box.TabIndex = 0;
             this.profile_disabled_check_box.Text = "Dedi mode";
             this.profile_disabled_check_box.UseVisualStyleBackColor = true;
+            this.profile_disabled_check_box.CheckedChanged += new System.EventHandler(this.profile_disabled_check_box_CheckedChanged);
             // 
             // xemu_browse_button
             // 
