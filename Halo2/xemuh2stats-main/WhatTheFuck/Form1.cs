@@ -805,7 +805,7 @@ namespace xemuh2stats
 
                 instance_name_text_box.Text = config.get("instance_name", "");
                 xemu_path_text_box.Text = config.get("xemu_path", "");
-                profile_disabled_check_box.Checked = config.get("dedi_mode", "False") == "True";
+                profile_disabled_check_box.Checked = config.get("dedi_mode", "True") == "True";
                 xemu_port_text_box.Text = config.get("xemu_port", "4444");
                 websocket_bind_text_box.Text = config.get("websocket_bind", "127.0.0.1");
                 websocket_bind_port_text_box.Text = config.get("websocket_port", "3333");
@@ -817,7 +817,7 @@ namespace xemuh2stats
             configuration_combo_box.SelectedIndex = -1;
             instance_name_text_box.Text = "";
             xemu_path_text_box.Text = "";
-            profile_disabled_check_box.Checked = false;
+            profile_disabled_check_box.Checked = true;
             xemu_port_text_box.Text = "4444";
         }
 
