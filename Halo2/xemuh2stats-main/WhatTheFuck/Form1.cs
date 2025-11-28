@@ -655,21 +655,20 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
-            UpdateHookStatus("Step 5b: Translating base address...");
+            UpdateHookStatus("Step 5b: Translating addresses...");
 
-            // ORIGINAL WORKING CODE: xemu base_address + xbe base_address
-            var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
+            // Xbox virtual address base: 0x80000000 (kernel base) + 0x5C000 (XBE offset) = 0x8005C000
+            const ulong XBE_BASE = 0x8005C000;
 
+            // Translate each Xbox virtual address individually (Xbox page tables are non-linear)
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
-                offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
+                ulong xbox_virtual_address = XBE_BASE + (ulong)offsetResolverItem.offset;
+                offsetResolverItem.address = (long)Program.qmp.Translate(xbox_virtual_address);
+                Console.WriteLine($"DEBUG: {offsetResolverItem.name} Xbox:0x{xbox_virtual_address:X} -> Host:0x{offsetResolverItem.address:X}");
             }
 
             UpdateHookStatus("Step 5c: Reading game state pointers...");
-
-            // Debug: Show calculated addresses
-            Console.WriteLine($"DEBUG: host_base_executable_address = 0x{host_base_executable_address:X}");
-            Console.WriteLine($"DEBUG: tags address = 0x{Program.exec_resolver["tags"].address:X}");
 
             var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
             var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
