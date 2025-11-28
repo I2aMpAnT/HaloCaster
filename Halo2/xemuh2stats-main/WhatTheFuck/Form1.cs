@@ -1038,15 +1038,15 @@ namespace xemuh2stats
 
         private void ApplyTheme()
         {
-            Color backColor, foreColor, controlBackColor, gridBackColor, gridForeColor;
+            System.Drawing.Color backColor, foreColor, controlBackColor, gridBackColor, gridForeColor;
 
             if (isDarkMode)
             {
-                backColor = Color.FromArgb(30, 30, 30);
-                foreColor = Color.White;
-                controlBackColor = Color.FromArgb(45, 45, 48);
-                gridBackColor = Color.FromArgb(37, 37, 38);
-                gridForeColor = Color.White;
+                backColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                foreColor = System.Drawing.Color.White;
+                controlBackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                gridBackColor = System.Drawing.Color.FromArgb(37, 37, 38);
+                gridForeColor = System.Drawing.Color.White;
                 theme_toggle_button.Text = "☀";
             }
             else
@@ -1079,7 +1079,7 @@ namespace xemuh2stats
                     dgv.ColumnHeadersDefaultCellStyle.ForeColor = foreColor;
                     dgv.EnableHeadersVisualStyles = false;
                 }
-                else if (control is TextBox || control is ComboBox || control is RichTextBox)
+                else if (control is System.Windows.Forms.TextBox || control is ComboBox || control is RichTextBox)
                 {
                     control.BackColor = controlBackColor;
                     control.ForeColor = foreColor;
