@@ -667,12 +667,18 @@ namespace xemuh2stats
 
             UpdateHookStatus("Step 5c: Reading game state pointers...");
 
+            // Debug: Show calculated addresses
+            Console.WriteLine($"DEBUG: host_base_executable_address = 0x{host_base_executable_address:X}");
+            Console.WriteLine($"DEBUG: tags address = 0x{Program.exec_resolver["tags"].address:X}");
+
             var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
             var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
             var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
 
-            UpdateHookStatus("Step 5d: Waiting for game to load...");
+            Console.WriteLine($"DEBUG: game_state_offset (tags value) = 0x{game_state_offset:X}");
+
+            UpdateHookStatus($"Step 5d: Waiting for game to load... (tags=0x{game_state_offset:X})");
 
             int waitAttempts = 0;
             while (game_state_offset == 0)
