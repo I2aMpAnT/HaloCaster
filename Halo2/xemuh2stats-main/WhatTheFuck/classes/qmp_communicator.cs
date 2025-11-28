@@ -17,7 +17,9 @@ public class QMPError : Exception
 
 public class QMPConnectError : QMPError
 {
-    public QMPConnectError() : base("QMP Connection Error") { }
+    public QMPConnectError(string details = null) : base(details != null
+        ? $"QMP Connection Error: {details}"
+        : "QMP Connection Error: XEMU socket connected but QMP greeting not received. XEMU may still be initializing.") { }
 }
 
 public class QMPCapabilitiesError : QMPError
@@ -76,12 +78,31 @@ public class QEMUMonitorProtocol
 
     private Dictionary<string, object> NegotiateCapabilities()
     {
-        _sockFile = new StreamReader(new NetworkStream(_sock));
-        var greeting = JsonRead();
+        // Set socket timeout to prevent hanging indefinitely
+        _sock.ReceiveTimeout = 10000; // 10 seconds
+        _sock.SendTimeout = 10000;
 
-        if (greeting == null || !greeting.ContainsKey("QMP"))
+        var networkStream = new NetworkStream(_sock);
+        _sockFile = new StreamReader(networkStream);
+
+        Dictionary<string, object> greeting = null;
+        try
         {
-            throw new QMPConnectError();
+            greeting = JsonRead();
+        }
+        catch (IOException ex)
+        {
+            throw new QMPConnectError($"Timeout reading QMP greeting: {ex.Message}");
+        }
+
+        if (greeting == null)
+        {
+            throw new QMPConnectError("Empty response - XEMU QMP server may not be ready");
+        }
+
+        if (!greeting.ContainsKey("QMP"))
+        {
+            throw new QMPConnectError($"Invalid greeting (no QMP key). Got: {Newtonsoft.Json.JsonConvert.SerializeObject(greeting)}");
         }
 
         var resp = Cmd("qmp_capabilities");
