@@ -657,15 +657,35 @@ namespace xemuh2stats
 
             UpdateHookStatus("Step 5b: Translating addresses...");
 
-            // Xbox virtual address base: 0x80000000 (kernel base) + 0x5C000 (XBE offset) = 0x8005C000
-            const ulong XBE_BASE = 0x8005C000;
+            // Try linear mapping first (works on some XEMU versions)
+            var host_base_executable_address = (long)Program.qmp.Translate(0x80000000) + 0x5C000;
 
-            // Translate each Xbox virtual address individually (Xbox page tables are non-linear)
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
-                ulong xbox_virtual_address = XBE_BASE + (ulong)offsetResolverItem.offset;
-                offsetResolverItem.address = (long)Program.qmp.Translate(xbox_virtual_address);
-                Console.WriteLine($"DEBUG: {offsetResolverItem.name} Xbox:0x{xbox_virtual_address:X} -> Host:0x{offsetResolverItem.address:X}");
+                offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
+            }
+
+            // Test if linear mapping works by reading the tags address
+            var test_tags_value = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+
+            // If linear mapping returns 0, try per-address translation (for non-linear page tables)
+            if (test_tags_value == 0)
+            {
+                UpdateHookStatus("Step 5b: Linear mapping failed, trying per-address translation...");
+                const ulong XBE_BASE = 0x8005C000;
+
+                foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
+                {
+                    try
+                    {
+                        ulong xbox_virtual_address = XBE_BASE + (ulong)offsetResolverItem.offset;
+                        offsetResolverItem.address = (long)Program.qmp.Translate(xbox_virtual_address);
+                    }
+                    catch
+                    {
+                        // If per-address translation fails, keep the linear address
+                    }
+                }
             }
 
             UpdateHookStatus("Step 5c: Reading game state pointers...");
