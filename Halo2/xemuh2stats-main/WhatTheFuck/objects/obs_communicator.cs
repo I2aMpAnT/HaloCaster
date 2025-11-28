@@ -24,7 +24,7 @@ namespace xemuh2stats.objects
             obs.Connected += onConnect;
             obs.Disconnected += onDisconnect;
             obs.CurrentProgramSceneChanged += onCurrentProgramSceneChanged;
-            obs.Connect(url, password);
+            obs.ConnectAsync(url, password);
             
         }
 

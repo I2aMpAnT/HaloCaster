@@ -262,9 +262,11 @@ namespace xemuh2stats.classes
         private static readonly List<string> game_column_headers = new List<string>()
         {
             "Player",
+            "Emblem URL",
             "kills",
             "assists",
             "deaths",
+            "headshots",
             "betrayals",
             "suicides",
             "best_spree",
@@ -301,9 +303,25 @@ namespace xemuh2stats.classes
                     DataType = new EnumValue<CellValues>(CellValues.String)
                 };
                 playerRow.Append(cell);
+
+                // Add emblem URL
+                cell = new Cell()
+                {
+                    CellValue = new CellValue(GetEmblemUrl(player)),
+                    DataType = new EnumValue<CellValues>(CellValues.String)
+                };
+                playerRow.Append(cell);
+
                 AddNumberToRow(playerRow, player.game_stats.kills);
                 AddNumberToRow(playerRow, player.game_stats.assists);
                 AddNumberToRow(playerRow, player.game_stats.deaths);
+                // Calculate total headshots from all weapons
+                int totalHeadshots = 0;
+                foreach (var weapon in player.weapon_stats.Values)
+                {
+                    totalHeadshots += weapon.head_shots;
+                }
+                AddNumberToRow(playerRow, totalHeadshots);
                 AddNumberToRow(playerRow, player.game_stats.betrayals);
                 AddNumberToRow(playerRow, player.game_stats.suicides);
                 AddNumberToRow(playerRow, player.game_stats.best_spree);
@@ -497,6 +515,101 @@ namespace xemuh2stats.classes
                 DataType = new EnumValue<CellValues>(CellValues.Number)
             };
             row.Append(cell);
+        }
+
+        private static string GetEmblemUrl(real_time_player_stats player)
+        {
+            var profile = player.player.profile_traits.profile;
+            int primaryColor = (int)profile.primary_color;
+            int secondaryColor = (int)profile.secondary_color;
+            int tertiaryColor = (int)profile.tertiary_color;
+            int quaternaryColor = (int)profile.quaternary_color;
+            int emblemForeground = (int)profile.emblem_info.foreground_emblem;
+            int emblemBackground = (int)profile.emblem_info.background_emblem;
+
+            return $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
+        }
+
+        private static readonly List<string> identity_column_headers = new List<string>()
+        {
+            "Player Name",
+            "Xbox Identifier",
+            "Machine Identifier",
+            "Emblem URL"
+        };
+
+        public static void dump_identity_to_sheet(string filename, int playerCount)
+        {
+            if (!Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}/stats/"))
+                Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}/stats/");
+
+            string filePath = $"{AppDomain.CurrentDomain.BaseDirectory}/stats/{filename}_identity.xlsx";
+
+            using (SpreadsheetDocument spreadsheetDocument = SpreadsheetDocument.Create(filePath, SpreadsheetDocumentType.Workbook))
+            {
+                WorkbookPart workbookPart = spreadsheetDocument.AddWorkbookPart();
+                workbookPart.Workbook = new Workbook();
+
+                WorksheetPart worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
+                worksheetPart.Worksheet = new Worksheet(new SheetData());
+
+                Sheets sheets = spreadsheetDocument.WorkbookPart.Workbook.AppendChild(new Sheets());
+
+                var data = CreateSheet(workbookPart, sheets, "Player Identities", identity_column_headers.ToArray());
+
+                for (int i = 0; i < playerCount; i++)
+                {
+                    var gameStatePlayer = game_state_player.get(i);
+                    string playerName = gameStatePlayer.GetPlayerName();
+
+                    if (string.IsNullOrWhiteSpace(playerName))
+                        continue;
+
+                    Row playerRow = new Row();
+
+                    Cell nameCell = new Cell()
+                    {
+                        CellValue = new CellValue(playerName),
+                        DataType = new EnumValue<CellValues>(CellValues.String)
+                    };
+                    playerRow.Append(nameCell);
+
+                    Cell identifierCell = new Cell()
+                    {
+                        CellValue = new CellValue(gameStatePlayer.identifier.ToString("X16")),
+                        DataType = new EnumValue<CellValues>(CellValues.String)
+                    };
+                    playerRow.Append(identifierCell);
+
+                    unsafe
+                    {
+                        byte[] machineId = new byte[6];
+                        for (int j = 0; j < 6; j++)
+                            machineId[j] = gameStatePlayer.machine_identifier[j];
+
+                        Cell machineCell = new Cell()
+                        {
+                            CellValue = new CellValue(BitConverter.ToString(machineId).Replace("-", "")),
+                            DataType = new EnumValue<CellValues>(CellValues.String)
+                        };
+                        playerRow.Append(machineCell);
+                    }
+
+                    // Add emblem URL
+                    var profile = gameStatePlayer.properties_1.profile_traits.profile;
+                    string emblemUrl = $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P={(int)profile.primary_color}&S={(int)profile.secondary_color}&EP={(int)profile.tertiary_color}&ES={(int)profile.quaternary_color}&EF={(int)profile.emblem_info.foreground_emblem}&EB={(int)profile.emblem_info.background_emblem}&ET=0";
+                    Cell emblemCell = new Cell()
+                    {
+                        CellValue = new CellValue(emblemUrl),
+                        DataType = new EnumValue<CellValues>(CellValues.String)
+                    };
+                    playerRow.Append(emblemCell);
+
+                    data.Append(playerRow);
+                }
+
+                workbookPart.Workbook.Save();
+            }
         }
     }
 }

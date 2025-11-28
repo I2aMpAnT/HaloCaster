@@ -30,6 +30,7 @@ namespace WhatTheFuck.classes
         public websocket_response(string message_type, string response_type, T response)
         {
             this.message_type = message_type;
+            this.response_type = response_type;
             this.response = response;
         }
     }
@@ -51,6 +52,19 @@ namespace WhatTheFuck.classes
         public static string websocket_message_send_event(string game_event)
         {
             return JsonConvert.SerializeObject(new websocket_response<string>("game_event_push", "", game_event));
+        }
+
+        public static string websocket_message_send_kill(string killer, string killerTeam, string victim, string victimTeam, string weapon)
+        {
+            var killData = new Dictionary<string, string>
+            {
+                { "killer", killer },
+                { "killer_team", killerTeam },
+                { "victim", victim },
+                { "victim_team", victimTeam },
+                { "weapon", weapon }
+            };
+            return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, string>>("kill_feed_push", "", killData));
         }
 
         public static string websocket_message_get_variant_details(Dictionary<string, string> arguments)
@@ -259,13 +273,25 @@ namespace WhatTheFuck.classes
                 }
                 case "location":
                 {
-                    Dictionary<string, Vector3> result = new Dictionary<string, Vector3>();
+                    Dictionary<string, Dictionary<string, object>> result = new Dictionary<string, Dictionary<string, object>>();
                     for (int i = 0; i < player_count; i++)
                     {
                         s_game_state_player _player = game_state_player.get(i);
-                        result.Add(game_state_player.name(i), game_state_object.get_object_position(_player.unit_index));
+                        real_time_player_stats real_player = real_time_player_stats.get(i);
+                        Vector3 position = game_state_object.get_object_position(_player.unit_index);
+                        float facingYaw = game_state_object.get_object_facing_yaw(_player.unit_index);
+
+                        Dictionary<string, object> playerData = new Dictionary<string, object>();
+                        playerData.Add("X", position.X);
+                        playerData.Add("Y", position.Y);
+                        playerData.Add("Z", position.Z);
+                        playerData.Add("facing", facingYaw);
+                        playerData.Add("team", real_player.player.team_index.ToString());
+                        playerData.Add("player_index", i);
+
+                        result.Add(game_state_player.name(i), playerData);
                     }
-                    return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, Vector3>>("get_players", arguments["type"], result));
+                    return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, Dictionary<string, object>>>("get_players", arguments["type"], result));
                 }
                 case "scoreboard":
                 {
@@ -375,12 +401,31 @@ namespace WhatTheFuck.classes
 
         public static void start(string ip, string port)
         {
-            _server = new websocket_server(new IPEndPoint(IPAddress.Parse(ip), int.Parse(port)));
-            _server.OnMessageReceived += server_message_received;
-            _server.OnClientConnected += _server_OnClientConnected;
-            _server.OnClientDisconnected += _server_OnClientDisconnected;
-            _server.OnSendMessage += _server_OnSendMessage;
-            game_event_monitor.add_event_callbaack(_server_on_game_event_update);
+            // Stop existing server if running
+            if (_server != null)
+            {
+                try
+                {
+                    _server.Stop();
+                }
+                catch { }
+                _server = null;
+            }
+
+            try
+            {
+                _server = new websocket_server(new IPEndPoint(IPAddress.Parse(ip), int.Parse(port)));
+                _server.OnMessageReceived += server_message_received;
+                _server.OnClientConnected += _server_OnClientConnected;
+                _server.OnClientDisconnected += _server_OnClientDisconnected;
+                _server.OnSendMessage += _server_OnSendMessage;
+                game_event_monitor.add_event_callbaack(_server_on_game_event_update);
+                game_event_monitor.add_raw_event_callback(_server_on_raw_game_event);
+            }
+            catch (System.Net.Sockets.SocketException ex)
+            {
+                throw new Exception($"WebSocket server failed to start on port {port}.\n\nThe port may be in use by another application or a previous instance.\n\nTry closing any other HaloCaster instances, or wait a few seconds and try again.\n\nOriginal error: {ex.Message}");
+            }
         }
 
         public static void _server_on_game_event_update(string game_event)
@@ -388,6 +433,34 @@ namespace WhatTheFuck.classes
             foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["events_push"]))
             {
                 _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_event(game_event));
+            }
+        }
+
+        public static void _server_on_raw_game_event(s_game_result_event game_event)
+        {
+            // Only process kill events for the kill feed
+            if (game_event.type != e_game_results_event_type._game_results_event_type_kill)
+                return;
+
+            string killer = real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index);
+            string victim = real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index);
+            string weapon = game_event.data.kill_event.statistic_index.ToString();
+
+            // Get team info for both players
+            string killerTeam = "";
+            string victimTeam = "";
+            try
+            {
+                var killerPlayer = real_time_player_stats.get(game_event.source_player_index);
+                var victimPlayer = real_time_player_stats.get(game_event.effected_player_index);
+                killerTeam = killerPlayer.player.team_index.ToString();
+                victimTeam = victimPlayer.player.team_index.ToString();
+            }
+            catch { }
+
+            foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["kills_push"]))
+            {
+                _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_kill(killer, killerTeam, victim, victimTeam, weapon));
             }
         }
 
@@ -405,7 +478,15 @@ namespace WhatTheFuck.classes
 
         public static void stop()
         {
-            _server.Stop();
+            if (_server != null)
+            {
+                try
+                {
+                    _server.Stop();
+                }
+                catch { }
+                _server = null;
+            }
         }
     }
 }

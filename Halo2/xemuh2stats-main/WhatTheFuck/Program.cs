@@ -15,7 +15,7 @@ namespace xemuh2stats
     internal static class Program
     {
         public static MemoryHandler memory;
-        public static long game_state_address;
+        // public static long game_state_address; // Unused
         public static offset_resolver game_state_resolver = new offset_resolver();
         public static offset_resolver exec_resolver = new offset_resolver();
         public static configuration_collection configurations = new configuration_collection();

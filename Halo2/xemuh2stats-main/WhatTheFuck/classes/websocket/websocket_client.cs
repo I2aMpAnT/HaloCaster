@@ -124,7 +124,7 @@ namespace WhatTheFuck.classes.websocket
                 GetSocket().BeginReceive(new byte[] { 0 }, 0, 0, SocketFlags.None, messageCallback, null);
 
             }
-            catch (Exception Exception)
+            catch
             {
                 GetSocket().Close();
                 GetSocket().Dispose();

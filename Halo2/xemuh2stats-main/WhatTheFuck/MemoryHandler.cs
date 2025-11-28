@@ -303,9 +303,6 @@ namespace xemuh2stats
         {
             var matchAddresses = new List<IntPtr>();
 
-            Process process = this.mainProcess;
-            IntPtr baseAddress = IntPtr.Zero;
-            MEMORY_BASIC_INFORMATION memInfo;
             List<MEMORY_BASIC_INFORMATION> regions = QueryMemoryRegions().Where(x => x.RegionSize == 0x4000000 || x.RegionSize == 0x8000000).ToList();
             int chunkSize = 8192;
             

@@ -128,10 +128,11 @@ namespace WhatTheFuck.objects
     {
         private static Dictionary<uint, long> address_cache = new Dictionary<uint, long>();
         private static List<Action<string>> event_callbacks = new List<Action<string>>();
+        private static List<Action<s_game_result_event>> raw_event_callbacks = new List<Action<s_game_result_event>>();
         private static uint last_event_record_id = 0;
         private static uint start_time = 0;
         private static DateTime start;
-        
+
         public static Dictionary<uint, s_game_result_event> event_log = new Dictionary<uint, s_game_result_event>();
 
         public static void reset()
@@ -187,6 +188,10 @@ namespace WhatTheFuck.objects
                     {
                         eventCallback.Invoke(format_event(gameEvent));
                     }
+                    foreach (var rawCallback in raw_event_callbacks)
+                    {
+                        rawCallback.Invoke(gameEvent);
+                    }
                 }
 
                 last_event_record_id = memEventCount;
@@ -196,6 +201,11 @@ namespace WhatTheFuck.objects
         public static void add_event_callbaack(Action<string> callback)
         {
             event_callbacks.Add(callback);
+        }
+
+        public static void add_raw_event_callback(Action<s_game_result_event> callback)
+        {
+            raw_event_callbacks.Add(callback);
         }
 
         public static string format_event(uint event_id)
@@ -211,19 +221,15 @@ namespace WhatTheFuck.objects
         public static string format_event(s_game_result_event game_event)
         {
             string message_base = $"[{start.AddSeconds(game_event.time_stamp):h:mm:ss}]\t";
-            game_event.
 
             switch (game_event.type)
             {
                 case e_game_results_event_type._game_results_event_type_kill:
                     return $"{message_base} {real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index)} Killed {real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index)} with {game_event.data.kill_event.statistic_index.GetDisplayName()}";
-                    break;
                 case e_game_results_event_type._game_results_event_type_score:
                     return $"{message_base} {real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index)} scored the {game_event.data.score_event.score_type}";
-                    break;
                 case e_game_results_event_type._game_results_event_type_carry:
                     return $"{message_base} {real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index)} is carrying {game_event.data.carry_event.carry_type.GetDisplayName()}";
-                    break;
             }
 
             return "";

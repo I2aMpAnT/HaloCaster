@@ -27,6 +27,7 @@ using DocumentFormat.OpenXml;
 using System.Numerics;
 using WhatTheFuck.extensions;
 using WhatTheFuck.objects;
+using System.Net;
 
 
 namespace xemuh2stats
@@ -39,20 +40,75 @@ namespace xemuh2stats
 
         public static bool time_lock = false;
         public static DateTime StartTime;
-        
+
 
         public static Process xemu_proccess;
 
         public static List<real_time_player_stats> real_time_cache = new List<real_time_player_stats>();
+
+        // Emblem cache to avoid repeated downloads
+        private static Dictionary<string, Image> emblemCache = new Dictionary<string, Image>();
+        private static HashSet<string> failedEmblemRequests = new HashSet<string>();
+
+        private Image GetEmblemImage(int primaryColor, int secondaryColor, int tertiaryColor, int quaternaryColor, int emblemForeground, int emblemBackground)
+        {
+            string cacheKey = $"{primaryColor}_{secondaryColor}_{tertiaryColor}_{quaternaryColor}_{emblemForeground}_{emblemBackground}";
+
+            if (emblemCache.ContainsKey(cacheKey))
+                return emblemCache[cacheKey];
+
+            // Don't retry requests that already failed (server returns 500 for some combinations)
+            if (failedEmblemRequests.Contains(cacheKey))
+                return null;
+
+            try
+            {
+                string url = $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
+
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                    byte[] imageData = client.DownloadData(url);
+
+                    if (imageData == null || imageData.Length == 0)
+                    {
+                        failedEmblemRequests.Add(cacheKey);
+                        return null;
+                    }
+
+                    using (MemoryStream ms = new MemoryStream(imageData))
+                    {
+                        using (Image tempImg = Image.FromStream(ms))
+                        {
+                            Image img = new Bitmap(tempImg);
+                            emblemCache[cacheKey] = img;
+                            return img;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                failedEmblemRequests.Add(cacheKey);
+                return null;
+            }
+        }
 
 
         public Form1()
         {
             InitializeComponent();
 
+            // Set default Xemu path to Desktop
+            if (string.IsNullOrEmpty(xemu_path_text_box.Text))
+            {
+                xemu_path_text_box.Text = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            }
+
             for (int i = 0; i < 16; i++)
             {
                 players_table.Rows.Add();
+                identity_table.Rows.Add();
                 debug_table.Rows.Add();
             }
 
@@ -72,8 +128,9 @@ namespace xemuh2stats
                 configuration_combo_box.Items.Add(configuration.name);
             }
 
-            main_tab_control.TabPages.RemoveAt(1);
-            main_tab_control.TabPages.RemoveAt(1);
+            main_tab_control.TabPages.RemoveAt(1);  // Remove players_tab_page
+            main_tab_control.TabPages.RemoveAt(1);  // Remove identity_tab_page
+            main_tab_control.TabPages.RemoveAt(1);  // Remove weapon_stats_tab
 
             weapon_player_select.Tag = 0;
 
@@ -168,6 +225,7 @@ namespace xemuh2stats
                         }
 
                         xls_generator.dump_game_to_sheet($"{timestamp}", real_time_cache, post_game_, Program.variant_details_cache);
+                        xls_generator.dump_identity_to_sheet($"{timestamp}", real_time_cache.Count);
                         dump_lock = true;
                     }
                 }
@@ -181,6 +239,11 @@ namespace xemuh2stats
                     case "Players":
                     {
                         render_players_tab();
+                        break;
+                    }
+                    case "Identity":
+                    {
+                        render_identity_tab();
                         break;
                     }
                     case "Weapon Stats":
@@ -270,7 +333,7 @@ namespace xemuh2stats
             game_events_text_box.ScrollToCaret();
         }
 
-        private uint last_event = 0;
+        // private uint last_event = 0; // Unused - code using this is commented out
         private void render_game_events_tab()
         {
             //uint out_index = 0;
@@ -321,7 +384,7 @@ namespace xemuh2stats
 
             if (weapon_player_select.SelectedIndex != -1)
             {
-                for (int i = 0; i < weapon_stat.weapon_list.Count; i++)
+                for (int i = 0; i < weapon_stat.weapon_list.Count && i < weapon_stat_table.Rows.Count; i++)
                 {
                     weapon_stat.s_weapon_stat
                         stat = weapon_stat.get_weapon_stats(weapon_player_select.SelectedIndex, i);
@@ -341,31 +404,53 @@ namespace xemuh2stats
                 Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
 
             var variant = variant_details.get();
-            for (int i = 0; i < test_player_count; i++)
+            for (int i = 0; i < test_player_count && i < players_table.Rows.Count; i++)
             {
                 var player = real_time_player_stats.get(i);
-                players_table.Rows[i].Cells[0].Value = player.GetPlayerName();
-                players_table.Rows[i].Cells[1].Value = player.player.team_index.GetDisplayName();
+
+                // Load emblem image (wrapped in try-catch to prevent crashes)
+                try
+                {
+                    int primaryColor = (int)player.player.profile_traits.profile.primary_color;
+                    int secondaryColor = (int)player.player.profile_traits.profile.secondary_color;
+                    int tertiaryColor = (int)player.player.profile_traits.profile.tertiary_color;
+                    int quaternaryColor = (int)player.player.profile_traits.profile.quaternary_color;
+                    int emblemForeground = (int)player.player.profile_traits.profile.emblem_info.foreground_emblem;
+                    int emblemBackground = (int)player.player.profile_traits.profile.emblem_info.background_emblem;
+
+                    Image emblem = GetEmblemImage(primaryColor, secondaryColor, tertiaryColor, quaternaryColor, emblemForeground, emblemBackground);
+                    if (emblem != null)
+                    {
+                        players_table.Rows[i].Cells[0].Value = emblem;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error setting emblem for player {i}: {ex.Message}");
+                }
+
+                players_table.Rows[i].Cells[1].Value = player.GetPlayerName();
+                players_table.Rows[i].Cells[2].Value = player.player.team_index.GetDisplayName();
 
                 switch (variant.game_type)
                 {
                     case game_type.capture_the_flag:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.ctf_scores;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.ctf_scores;
                         break;
                     case game_type.slayer:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.kills;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.kills;
                         break;
                     case game_type.oddball:
                         if (player.game_stats.oddball_score > 0)
                         {
                             try
                             {
-                                players_table.Rows[i].Cells[2].Value =
+                                players_table.Rows[i].Cells[3].Value =
                                     TimeSpan.FromSeconds(player.game_stats.oddball_score).ToString("mm:ss");
                             }
                             catch (Exception)
                             {
-                                players_table.Rows[i].Cells[2].Value = player.game_stats.oddball_score;
+                                players_table.Rows[i].Cells[3].Value = player.game_stats.oddball_score;
                             }
                         }
 
@@ -374,51 +459,78 @@ namespace xemuh2stats
                     {
                         try
                         {
-                            players_table.Rows[i].Cells[2].Value =
+                            players_table.Rows[i].Cells[3].Value =
                                 TimeSpan.FromSeconds(player.game_stats.oddball_score).ToString("mm:ss");
                         }
                         catch (Exception)
                         {
-                            players_table.Rows[i].Cells[2].Value = player.game_stats.oddball_score;
+                            players_table.Rows[i].Cells[3].Value = player.game_stats.oddball_score;
                         }
                     }
                         break;
                     case game_type.juggernaut:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.kills_as_juggernaut;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.kills_as_juggernaut;
                         break;
                     case game_type.territories:
                     {
                         try
                         {
-                            players_table.Rows[i].Cells[2].Value =
+                            players_table.Rows[i].Cells[3].Value =
                                 TimeSpan.FromSeconds(player.game_stats.oddball_score).ToString("mm:ss");
                         }
                         catch (Exception)
                         {
-                            players_table.Rows[i].Cells[2].Value = player.game_stats.oddball_score;
+                            players_table.Rows[i].Cells[3].Value = player.game_stats.oddball_score;
                         }
                     }
                         break;
                     case game_type.assault:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.assault_score;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.assault_score;
                         break;
                     default:
-                        players_table.Rows[i].Cells[2].Value = player.game_stats.kills;
+                        players_table.Rows[i].Cells[3].Value = player.game_stats.kills;
                         break;
                 }
 
-                players_table.Rows[i].Cells[3].Value = player.game_stats.kills;
-                players_table.Rows[i].Cells[4].Value = player.game_stats.deaths;
-                players_table.Rows[i].Cells[5].Value = player.game_stats.assists;
+                players_table.Rows[i].Cells[4].Value = player.game_stats.kills;
+                players_table.Rows[i].Cells[5].Value = player.game_stats.deaths;
+                players_table.Rows[i].Cells[6].Value = player.game_stats.assists;
                 if (player.game_stats.deaths > 0)
                 {
                     float kda = (float) (player.game_stats.kills + player.game_stats.assists) /
                                 player.game_stats.deaths;
-                    players_table.Rows[i].Cells[6].Value = Math.Round(kda, 3);
+                    players_table.Rows[i].Cells[7].Value = Math.Round(kda, 3);
                 }
                 else
                 {
-                    players_table.Rows[i].Cells[6].Value = player.game_stats.kills + player.game_stats.assists;
+                    players_table.Rows[i].Cells[7].Value = player.game_stats.kills + player.game_stats.assists;
+                }
+            }
+        }
+
+        private void render_identity_tab()
+        {
+            int test_player_count =
+                Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+
+            for (int i = 0; i < test_player_count && i < identity_table.Rows.Count; i++)
+            {
+                var gameStatePlayer = game_state_player.get(i);
+                // Try direct memory read instead of struct field
+                string playerName = game_state_player.name(i);
+
+                if (string.IsNullOrWhiteSpace(playerName))
+                    continue;
+
+                identity_table.Rows[i].Cells[0].Value = playerName;
+                identity_table.Rows[i].Cells[1].Value = gameStatePlayer.identifier.ToString("X16");
+
+                unsafe
+                {
+                    byte[] machineId = new byte[6];
+                    for (int j = 0; j < 6; j++)
+                        machineId[j] = gameStatePlayer.machine_identifier[j];
+                    identity_table.Rows[i].Cells[2].Value = BitConverter.ToString(machineId).Replace("-", "");
                 }
             }
         }
@@ -478,11 +590,11 @@ namespace xemuh2stats
                     }
                 }
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return "";
             }
-            catch (Exception ex)
+            catch
             {
                 return "";
             }
@@ -492,6 +604,8 @@ namespace xemuh2stats
 
         private void resolve_addresses()
         {
+            UpdateHookStatus("Step 5a: Setting up offset resolvers...");
+
             // offsets are host (host virtual address - host_base_executable_address)
             Program.exec_resolver.Add(new offset_resolver_item("game_stats", 0x35ADF02, ""));
             Program.exec_resolver.Add(new offset_resolver_item("weapon_stats", 0x35ADFE0, ""));
@@ -516,7 +630,9 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
-            // xemu base_address + xbe base_address
+            UpdateHookStatus("Step 5b: Translating base address...");
+
+            // ORIGINAL WORKING CODE: xemu base_address + xbe base_address
             var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
@@ -524,16 +640,31 @@ namespace xemuh2stats
                 offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
             }
 
+            UpdateHookStatus("Step 5c: Reading game state pointers...");
+
             var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
             var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
             var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
 
+            UpdateHookStatus("Step 5d: Waiting for game to load...");
+
+            int waitAttempts = 0;
             while (game_state_offset == 0)
             {
+                System.Threading.Thread.Sleep(100);
+                Application.DoEvents();
                 game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+                waitAttempts++;
+                if (waitAttempts > 600) // 60 second timeout
+                {
+                    UpdateHookStatus("Timeout - game not loaded");
+                    MessageBox.Show("Timeout waiting for game to load. Please load a game in XEMU and try again.", "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
+            UpdateHookStatus("Step 5e: Finalizing game state addresses...");
             var game_state_tags_addr = Program.qmp.Translate(game_state_offset);
 
             Program.game_state_resolver["game_state_players"].address = (long) game_state_players_addr;
@@ -542,8 +673,19 @@ namespace xemuh2stats
             Program.game_state_resolver["game_engine"].address = (long) game_engine_addr;
             Program.game_state_resolver["game_ending"].address = (long)game_state_players_addr - 0x1E8;
 
-            main_tab_control.TabPages.Add(players_tab_page);
-            main_tab_control.TabPages.Add(weapon_stats_tab);
+            // Add tabs only if they don't already exist
+            if (!main_tab_control.TabPages.Contains(players_tab_page))
+                main_tab_control.TabPages.Add(players_tab_page);
+            if (!main_tab_control.TabPages.Contains(identity_tab_page))
+                main_tab_control.TabPages.Add(identity_tab_page);
+            if (!main_tab_control.TabPages.Contains(weapon_stats_tab))
+                main_tab_control.TabPages.Add(weapon_stats_tab);
+        }
+
+        private void UpdateHookStatus(string status)
+        {
+            hook_status_label.Text = status;
+            Application.DoEvents();
         }
 
         private void xemu_launch_button_Click(object sender, EventArgs e)
@@ -553,24 +695,45 @@ namespace xemuh2stats
                 var xemu_path = FindFileInDirectory(xemu_path_text_box.Text, "xemu.exe");
                 if (!string.IsNullOrEmpty(xemu_path))
                 {
-                    ProcessStartInfo startInfo = new ProcessStartInfo
+                    try
                     {
-                        FileName = xemu_path,
-                        Arguments = $"-qmp tcp:localhost:{int.Parse(xemu_port_text_box.Text)},server,nowait",
-                    };
-                    xemu_proccess = Process.Start(startInfo);
-                    System.Threading.Thread.Sleep(5000);
+                        UpdateHookStatus("Step 1: Launching XEMU...");
+                        ProcessStartInfo startInfo = new ProcessStartInfo
+                        {
+                            FileName = xemu_path,
+                            Arguments = $"-qmp tcp:localhost:{int.Parse(xemu_port_text_box.Text)},server,nowait",
+                        };
+                        xemu_proccess = Process.Start(startInfo);
 
-                    Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
+                        UpdateHookStatus("Step 2: Waiting for XEMU startup...");
+                        System.Threading.Thread.Sleep(7000);
 
-                    Program.memory = new MemoryHandler(xemu_proccess);
-                    resolve_addresses();
-                    is_valid = true;
+                        UpdateHookStatus("Step 3: Connecting to QMP...");
+                        // QmpProxy constructor has built-in retry logic
+                        Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
 
-                    configuration_combo_box.Enabled = false;
-                    settings_group_box.Enabled = false;
-                    xemu_launch_button.Enabled = false;
-                    websocket_communicator.start(websocket_bind_text_box.Text, websocket_bind_port_text_box.Text);
+                        UpdateHookStatus("Step 4: Attaching to process memory...");
+                        Program.memory = new MemoryHandler(xemu_proccess);
+
+                        UpdateHookStatus("Step 5: Resolving addresses...");
+                        resolve_addresses();
+
+                        UpdateHookStatus("Hooked successfully!");
+                        is_valid = true;
+
+                        configuration_combo_box.Enabled = false;
+                        settings_group_box.Enabled = false;
+                        xemu_launch_button.Enabled = false;
+
+                        UpdateHookStatus("Step 6: Starting WebSocket server...");
+                        websocket_communicator.start(websocket_bind_text_box.Text, websocket_bind_port_text_box.Text);
+                        UpdateHookStatus("Ready - Hooked");
+                    }
+                    catch (Exception ex)
+                    {
+                        UpdateHookStatus($"Error: {ex.Message}");
+                        MessageBox.Show($"Hook failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
@@ -642,7 +805,7 @@ namespace xemuh2stats
 
                 instance_name_text_box.Text = config.get("instance_name", "");
                 xemu_path_text_box.Text = config.get("xemu_path", "");
-                profile_disabled_check_box.Checked = config.get("dedi_mode", "False") == "True";
+                profile_disabled_check_box.Checked = config.get("dedi_mode", "True") == "True";
                 xemu_port_text_box.Text = config.get("xemu_port", "4444");
                 websocket_bind_text_box.Text = config.get("websocket_bind", "127.0.0.1");
                 websocket_bind_port_text_box.Text = config.get("websocket_port", "3333");
@@ -654,7 +817,7 @@ namespace xemuh2stats
             configuration_combo_box.SelectedIndex = -1;
             instance_name_text_box.Text = "";
             xemu_path_text_box.Text = "";
-            profile_disabled_check_box.Checked = false;
+            profile_disabled_check_box.Checked = true;
             xemu_port_text_box.Text = "4444";
         }
 

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,9 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Threading;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 public class QMPError : Exception
 {
@@ -103,7 +102,7 @@ public class QEMUMonitorProtocol
                 return null;
             }
 
-            var resp = JsonSerializer.Deserialize<Dictionary<string, object>>(data);
+            var resp = JsonConvert.DeserializeObject<Dictionary<string, object>>(data);
             if (resp != null && resp.ContainsKey("event"))
             {
                 _events.Add(resp);
@@ -125,6 +124,10 @@ public class QEMUMonitorProtocol
         }
         catch (SocketException e)
         {
+            if (e.SocketErrorCode == SocketError.ConnectionRefused)
+            {
+                throw new QMPError($"Socket Error: {e.Message}\n\nXEMU must be running with QMP enabled.\nEither use HaloCaster to launch XEMU, or add this to your XEMU launch arguments:\n-qmp tcp:localhost:{port},server,nowait");
+            }
             throw new QMPError($"Socket Error: {e.Message}");
         }
     }
@@ -146,7 +149,7 @@ public class QEMUMonitorProtocol
     {
         try
         {
-            var jsonString = JsonSerializer.Serialize(qmpCmd);
+            var jsonString = JsonConvert.SerializeObject(qmpCmd);
             _sock.Send(System.Text.Encoding.UTF8.GetBytes(jsonString));
         }
         catch (SocketException e)
@@ -250,7 +253,7 @@ public class QmpProxy
                 _qmp = new QEMUMonitorProtocol("localhost", false);
                 _qmp.Connect(port);
             }
-            catch (Exception e)
+            catch
             {
                 if (i > 4)
                 {
@@ -293,7 +296,7 @@ public class QmpProxy
             cmdCounter = 0;
             cmdCounterReset = DateTime.Now;
 
-            Console.WriteLine(JsonSerializer.Serialize(cmd));
+            Console.WriteLine(JsonConvert.SerializeObject(cmd));
             Debug.WriteLine(Environment.StackTrace);
         }
 
@@ -335,7 +338,7 @@ public class QmpProxy
     {
         var resp = RunCmd("query-status");
         return resp != null && resp.ContainsKey("return") &&
-               ((JsonElement) resp["return"]).GetProperty("status").GetString() == "paused";
+               ((JObject)resp["return"])["status"]?.ToString() == "paused";
     }
 
     public byte[] Read(ulong addr, int size)
@@ -357,6 +360,12 @@ public class QmpProxy
 
     public ulong Gpa2Hva(ulong addr)
     {
+        // Skip only truly invalid addresses (GPA 0 is valid for Xbox - RAM starts at physical 0)
+        if (addr == ulong.MaxValue)
+        {
+            return 0;
+        }
+
         var cmd = new Dictionary<string, object>
         {
             {"execute", "human-monitor-command"},
@@ -364,11 +373,33 @@ public class QmpProxy
         };
 
         var response = RunCmd(cmd);
-        var lines = response["return"].ToString().Replace("\r", "").Split('\n');
+        var rawResponse = response["return"].ToString();
+        Console.WriteLine($"DEBUG QMP gpa2hva(0x{addr:X}) raw response: '{rawResponse}'");
+
+        var lines = rawResponse.Replace("\r", "").Split('\n');
         var dataString = string.Join(" ",
             Array.ConvertAll(lines,
                 l => l.Contains(" is ") ? l.Split(new[] {" is "}, StringSplitOptions.None)[1] : string.Empty)).Trim();
-        return Convert.ToUInt64(dataString, 16);
+
+        Console.WriteLine($"DEBUG QMP gpa2hva parsed dataString: '{dataString}'");
+
+        if (string.IsNullOrEmpty(dataString))
+        {
+            Console.WriteLine($"Error: Could not convert GPA 0x{addr:X} to HVA. Response: {rawResponse}");
+            throw new Exception($"Could not convert GPA 0x{addr:X} to HVA.");
+        }
+
+        try
+        {
+            var result = Convert.ToUInt64(dataString, 16);
+            Console.WriteLine($"DEBUG QMP gpa2hva result: 0x{result:X}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing HVA from '{dataString}': {ex.Message}");
+            throw new Exception($"Error parsing HVA from '{dataString}': {ex.Message}");
+        }
     }
 
     public ulong Gpa2Hpa(ulong addr)
@@ -386,6 +417,13 @@ public class QmpProxy
 
     public ulong Gva2Gpa(ulong addr)
     {
+        // Validate address before attempting translation
+        if (addr == 0 || addr == ulong.MaxValue)
+        {
+            Console.WriteLine($"Skipping invalid GVA address: {addr}");
+            return 0;
+        }
+
         var cmd = new Dictionary<string, object>
         {
             {"execute", "human-monitor-command"},
@@ -393,19 +431,26 @@ public class QmpProxy
         };
 
         var response = RunCmd(cmd);
-        var lines = response["return"].ToString().Replace("\r", "").Split('\n');
+        var rawResponse = response["return"].ToString();
+        Console.WriteLine($"DEBUG QMP gva2gpa(0x{addr:X}) raw response: '{rawResponse}'");
+
+        var lines = rawResponse.Replace("\r", "").Split('\n');
         var dataString = string.Join(" ",
             Array.ConvertAll(lines,
                 l => l.Contains("gpa: ") ? l.Split(new[] {"gpa: "}, StringSplitOptions.None)[1].Replace("0x","") : string.Empty)).Trim();
 
+        Console.WriteLine($"DEBUG QMP gva2gpa parsed dataString: '{dataString}'");
+
         if (ulong.TryParse(dataString, System.Globalization.NumberStyles.HexNumber, null, out ulong result))
         {
+            Console.WriteLine($"DEBUG QMP gva2gpa result: 0x{result:X}");
             return result;
         }
         else
         {
-            Console.WriteLine($"Error converting GVA {addr} to GPA (got {response})");
-            throw new Exception($"Error converting GVA {addr} to GPA.");
+            // Log the actual response for debugging
+            Console.WriteLine($"Error converting GVA 0x{addr:X} to GPA. Response: {rawResponse}");
+            throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Game may not be fully loaded or QMP response format changed.");
         }
     }
 

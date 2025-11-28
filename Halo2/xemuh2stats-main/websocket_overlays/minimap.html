@@ -8,11 +8,74 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            background-color: #1a1a2e;
+            color: white;
+        }
+
+        h1 {
+            color: #eee;
+        }
+
+        label {
+            margin-right: 5px;
+        }
+
+        input[type="text"] {
+            padding: 5px;
+            margin: 5px;
+            border-radius: 3px;
+            border: 1px solid #444;
+            background-color: #2a2a4e;
+            color: white;
+        }
+
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 5px;
+            border: none;
+            background-color: #4a4a8e;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #6a6aae;
+        }
+
+        #connectionStatus {
+            color: #aaa;
         }
 
         #minimap {
-            border: 1px solid black;
+            border: 2px solid #444;
             margin-top: 20px;
+            background-color: #0a0a1e;
+        }
+
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .zoom-controls button {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            padding: 0;
+        }
+
+        #zoomLevel {
+            min-width: 60px;
+            text-align: center;
         }
     </style>
 </head>
@@ -21,13 +84,23 @@
 
     <!-- WebSocket connection inputs and controls -->
     <label for="serverIp">Server IP:</label>
-    <input type="text" id="serverIp" placeholder="e.g., localhost"><br>
-    
+    <input type="text" id="serverIp" value="localhost" placeholder="e.g., localhost">
+
     <label for="serverPort">Server Port:</label>
-    <input type="text" id="serverPort" placeholder="e.g., 8080"><br>
-    
+    <input type="text" id="serverPort" value="3333" placeholder="e.g., 3333">
+
     <button id="connectBtn">Connect</button>
     <p id="connectionStatus">Not connected</p>
+
+    <!-- Zoom Controls -->
+    <div class="controls">
+        <div class="zoom-controls">
+            <button id="zoomOut">-</button>
+            <span id="zoomLevel">100%</span>
+            <button id="zoomIn">+</button>
+        </div>
+        <button id="resetZoom">Reset Zoom</button>
+    </div>
 
     <!-- Minimap Canvas -->
     <canvas id="minimap" width="500" height="500"></canvas>
@@ -38,14 +111,27 @@
         const ctx = canvas.getContext('2d');
         const canvasSize = 500;
         const halfCanvasSize = canvasSize / 2;
-        const worldSize = 50; // Range of [-25, 25]
-        const scale = canvasSize / worldSize; // Scaling factor for world units to canvas
+
+        // Zoom variables
+        let zoomLevel = 1.0; // 1.0 = 100%
+        const minZoom = 0.25;
+        const maxZoom = 4.0;
+        const zoomStep = 0.25;
+        const baseWorldSize = 50; // Base range of [-25, 25]
+
+        function getWorldSize() {
+            return baseWorldSize / zoomLevel;
+        }
+
+        function getScale() {
+            return canvasSize / getWorldSize();
+        }
 
         // Define Z-value range (height) for scaling circles
-        const zMin = -20; // Lowest Z value (most negative)
-        const zMax = 10;   // Highest Z value (closest to zero)
-        const circleMinSize = 2;  // Minimum circle size
-        const circleMaxSize = 10; // Maximum circle size
+        const zMin = -20;
+        const zMax = 10;
+        const circleMinSize = 2;
+        const circleMaxSize = 10;
 
         let playersData = {};
 
@@ -98,7 +184,6 @@
                 const responseWrapper = JSON.parse(data);
                 const response = responseWrapper.response;
 
-                // Handle player location data if the message type is get_players
                 if (responseWrapper.message_type === 'get_players') {
                     playersData = response;
                     drawMinimap();
@@ -127,7 +212,6 @@
             wsClient.connect(wsUrl).then(() => {
                 document.getElementById('connectionStatus').textContent = 'Connected to ' + wsUrl;
 
-                // Request location data periodically
                 setInterval(() => {
                     const message = { message_type: 'get_players', arguments: { type: 'location' } };
                     wsClient.sendMessage(message);
@@ -138,38 +222,193 @@
             });
         });
 
+        // Zoom controls
+        document.getElementById('zoomIn').addEventListener('click', function() {
+            if (zoomLevel < maxZoom) {
+                zoomLevel = Math.min(zoomLevel + zoomStep, maxZoom);
+                updateZoomDisplay();
+                drawMinimap();
+            }
+        });
+
+        document.getElementById('zoomOut').addEventListener('click', function() {
+            if (zoomLevel > minZoom) {
+                zoomLevel = Math.max(zoomLevel - zoomStep, minZoom);
+                updateZoomDisplay();
+                drawMinimap();
+            }
+        });
+
+        document.getElementById('resetZoom').addEventListener('click', function() {
+            zoomLevel = 1.0;
+            updateZoomDisplay();
+            drawMinimap();
+        });
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+        }
+
+        // Team color mapping
+        const teamColors = {
+            '_game_team_red': '#FF4444',
+            '_game_team_blue': '#4444FF',
+            '_game_team_yellow': '#FFFF44',
+            '_game_team_green': '#44FF44',
+            '_game_team_purple': '#AA44AA',
+            '_game_team_orange': '#FF8844',
+            '_game_team_brown': '#8B4513',
+            '_game_team_pink': '#FF69B4',
+            '_game_team_neutral': '#AAAAAA'
+        };
+
+        // Height difference threshold for showing arrows
+        // Player model is ~2 units tall, 150% = 3 units difference triggers arrow
+        const heightThreshold = 3.0;
+        const symbolSize = 10;
+        const facingConeLength = 25; // Length of facing direction cone
+        const facingConeAngle = Math.PI / 6; // 30 degree cone (15 degrees each side)
+
         // Function to draw the minimap
         function drawMinimap() {
-            // Clear the canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const scale = getScale();
+
+            // Clear the canvas with dark background
+            ctx.fillStyle = '#0a0a1e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid lines
+            ctx.strokeStyle = '#1a1a3e';
+            ctx.lineWidth = 1;
+            const gridSpacing = 10 * scale; // Grid every 10 world units
+            for (let i = -250; i <= 250; i += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(halfCanvasSize + i, 0);
+                ctx.lineTo(halfCanvasSize + i, canvasSize);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, halfCanvasSize + i);
+                ctx.lineTo(canvasSize, halfCanvasSize + i);
+                ctx.stroke();
+            }
+
+            // Draw center crosshair
+            ctx.strokeStyle = '#333366';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(halfCanvasSize, 0);
+            ctx.lineTo(halfCanvasSize, canvasSize);
+            ctx.moveTo(0, halfCanvasSize);
+            ctx.lineTo(canvasSize, halfCanvasSize);
+            ctx.stroke();
+
+            // Get first player's Z as reference (or use 0)
+            let referenceZ = 0;
+            const playerNames = Object.keys(playersData);
+            if (playerNames.length > 0) {
+                referenceZ = playersData[playerNames[0]].Z || 0;
+            }
 
             // Loop through each player in playersData
             for (const playerName in playersData) {
                 const player = playersData[playerName];
-                const x = player.X; // X coordinate in world units
-                const y = player.Y; // Y coordinate in world units
-                const z = player.Z; // Z coordinate in world units (affects circle size)
+                const x = player.X;
+                const y = player.Y;
+                const z = player.Z;
+                const facing = player.facing || 0;
+                const team = player.team || '_game_team_neutral';
 
                 // Convert world coordinates to canvas coordinates
                 const canvasX = halfCanvasSize + x * scale;
                 const canvasY = halfCanvasSize - y * scale;
 
-                // Normalize the Z value to determine circle size
-                const normalizedZ = (z - zMin) / (zMax - zMin); // Range [0, 1]
-                const circleSize = normalizedZ * (circleMaxSize - circleMinSize) + circleMinSize;
+                // Skip if off canvas
+                if (canvasX < -50 || canvasX > canvasSize + 50 || canvasY < -50 || canvasY > canvasSize + 50) {
+                    continue;
+                }
 
-                // Draw the player as a circle
+                // Get team color
+                const color = teamColors[team] || '#FFFFFF';
+
+                // Determine height difference from reference player
+                const heightDiff = z - referenceZ;
+
+                // Draw facing direction cone FIRST (so it appears behind the symbol)
+                // This is a pie/wedge shape showing field of view
+                ctx.fillStyle = color + '40'; // 25% opacity
+                ctx.strokeStyle = color + '80'; // 50% opacity
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(canvasX, canvasY, circleSize, 0, 2 * Math.PI);
-                ctx.fillStyle = 'blue';
+                ctx.moveTo(canvasX, canvasY);
+                // Arc from facing - coneAngle to facing + coneAngle
+                // Note: canvas Y is inverted, so we negate the facing angle for correct direction
+                const canvasFacing = -facing; // Invert for canvas coordinates
+                ctx.arc(canvasX, canvasY, facingConeLength, canvasFacing - facingConeAngle, canvasFacing + facingConeAngle);
+                ctx.closePath();
                 ctx.fill();
+                ctx.stroke();
+
+                // Draw the player symbol
+                ctx.fillStyle = color;
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+
+                if (heightDiff > heightThreshold) {
+                    // Player is higher - draw up arrow (triangle pointing up)
+                    ctx.beginPath();
+                    ctx.moveTo(canvasX, canvasY - symbolSize);
+                    ctx.lineTo(canvasX + symbolSize, canvasY + symbolSize);
+                    ctx.lineTo(canvasX - symbolSize, canvasY + symbolSize);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (heightDiff < -heightThreshold) {
+                    // Player is lower - draw down arrow (triangle pointing down)
+                    ctx.beginPath();
+                    ctx.moveTo(canvasX, canvasY + symbolSize);
+                    ctx.lineTo(canvasX + symbolSize, canvasY - symbolSize);
+                    ctx.lineTo(canvasX - symbolSize, canvasY - symbolSize);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // Player is at similar height - draw filled circle
+                    ctx.beginPath();
+                    ctx.arc(canvasX, canvasY, symbolSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Draw a small line in the exact facing direction from center
+                const lineEndX = canvasX + Math.cos(-facing) * (symbolSize + 8);
+                const lineEndY = canvasY + Math.sin(-facing) * (symbolSize + 8);
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(canvasX, canvasY);
+                ctx.lineTo(lineEndX, lineEndY);
+                ctx.stroke();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(canvasX, canvasY);
+                ctx.lineTo(lineEndX, lineEndY);
+                ctx.stroke();
+
+                // Draw player name above the symbol
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.strokeText(playerName, canvasX, canvasY - symbolSize - 4);
+                ctx.fillText(playerName, canvasX, canvasY - symbolSize - 4);
             }
         }
+
+        // Initial draw
+        drawMinimap();
     </script>
 </body>
 </html>
-
-
-#modify location message to include player's team (for color), their index for numbering, and maybe direction theyh are looking if possible?
-#work on integrating map backgrounds
-	#can we use constant xyz across all maps or nah?

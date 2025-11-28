@@ -228,6 +228,9 @@ namespace WhatTheFuck.classes.websocket
         /// </summary>
         private void start()
         {
+            // Allow reuse of the address/port if the socket was recently closed
+            GetSocket().SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
             // Bind the socket and start listending
             GetSocket().Bind(GetEndPoint());
             GetSocket().Listen(0);

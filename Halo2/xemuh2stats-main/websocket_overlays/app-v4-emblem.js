@@ -132,11 +132,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Function to generate HTML content for the emblem image
 function getEmblemCellContent(player) {
+    // Debug: Log the player emblem values
+    console.log('Emblem values:', {
+        primary: player.primary_color,
+        secondary: player.secondary_color,
+        tertiary: player.tertiary_color,
+        quaternary: player.quaternary_color,
+        foreground: player.emblem_foreground,
+        background: player.emblem_background
+    });
+
+    // Check if we have valid emblem data
+    const hasEmblemData = player.emblem_foreground !== undefined &&
+                          player.emblem_background !== undefined &&
+                          player.primary_color !== undefined;
+
+    if (!hasEmblemData) {
+        console.warn('Missing emblem data for player:', player);
+        return '<span style="color: #666;">No emblem</span>';
+    }
+
     // Construct the emblem URL using player emblem values
+    // P/S = primary/secondary armor colors, EP/ES = emblem primary/secondary colors
+    // EF = emblem foreground shape, EB = emblem background shape
     const emblem_url = `https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
 
-    // Return emblem image
-    return `<img src="${emblem_url}" style="max-height: 44px;" alt="Emblem" />`;
+    console.log('Emblem URL:', emblem_url);
+
+    // Return emblem image with error handling
+    return `<img src="${emblem_url}" style="max-height: 44px;" alt="Emblem" onerror="this.style.display='none'; console.error('Failed to load emblem:', '${emblem_url}');" />`;
 }
 
 // Function to generate HTML content for player name with weapon image

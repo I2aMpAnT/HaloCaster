@@ -57,6 +57,7 @@
             this.xemu_launch_button = new System.Windows.Forms.Button();
             this.players_tab_page = new System.Windows.Forms.TabPage();
             this.players_table = new System.Windows.Forms.DataGridView();
+            this.column_player_emblem = new System.Windows.Forms.DataGridViewImageColumn();
             this.column_player_name = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_player_team = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_player_score = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -64,6 +65,11 @@
             this.column_player_deaths = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_player_assists = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.column_kda = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.identity_tab_page = new System.Windows.Forms.TabPage();
+            this.identity_table = new System.Windows.Forms.DataGridView();
+            this.column_identity_name = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.column_identity_xuid = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.column_identity_machine = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.weapon_stats_tab = new System.Windows.Forms.TabPage();
             this.weapon_player_select = new System.Windows.Forms.ComboBox();
             this.weapon_stat_table = new System.Windows.Forms.DataGridView();
@@ -108,6 +114,7 @@
             this.variant_status_label = new System.Windows.Forms.ToolStripStatusLabel();
             this.game_type_status_label = new System.Windows.Forms.ToolStripStatusLabel();
             this.map_status_label = new System.Windows.Forms.ToolStripStatusLabel();
+            this.hook_status_label = new System.Windows.Forms.ToolStripStatusLabel();
             this.events_tab_page = new System.Windows.Forms.TabPage();
             this.game_events_text_box = new System.Windows.Forms.RichTextBox();
             this.main_tab_control.SuspendLayout();
@@ -116,6 +123,8 @@
             this.groupBox1.SuspendLayout();
             this.players_tab_page.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.players_table)).BeginInit();
+            this.identity_tab_page.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.identity_table)).BeginInit();
             this.weapon_stats_tab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.weapon_stat_table)).BeginInit();
             this.debug_tab.SuspendLayout();
@@ -132,6 +141,7 @@
             // 
             this.main_tab_control.Controls.Add(this.setup_tab_page);
             this.main_tab_control.Controls.Add(this.players_tab_page);
+            this.main_tab_control.Controls.Add(this.identity_tab_page);
             this.main_tab_control.Controls.Add(this.weapon_stats_tab);
             this.main_tab_control.Controls.Add(this.debug_tab);
             this.main_tab_control.Controls.Add(this.obs_tab_page);
@@ -328,7 +338,7 @@
             this.xemu_path_text_box.Name = "xemu_path_text_box";
             this.xemu_path_text_box.Size = new System.Drawing.Size(361, 20);
             this.xemu_path_text_box.TabIndex = 2;
-            this.xemu_path_text_box.Text = "F:\\xemu";
+            this.xemu_path_text_box.Text = "";
             // 
             // label3
             // 
@@ -431,6 +441,7 @@
             this.players_table.AllowUserToDeleteRows = false;
             this.players_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.players_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.column_player_emblem,
             this.column_player_name,
             this.column_player_team,
             this.column_player_score,
@@ -443,9 +454,17 @@
             this.players_table.ReadOnly = true;
             this.players_table.Size = new System.Drawing.Size(756, 599);
             this.players_table.TabIndex = 0;
-            // 
+            //
+            // column_player_emblem
+            //
+            this.column_player_emblem.HeaderText = "Emblem";
+            this.column_player_emblem.Name = "column_player_emblem";
+            this.column_player_emblem.ReadOnly = true;
+            this.column_player_emblem.Width = 44;
+            this.column_player_emblem.ImageLayout = System.Windows.Forms.DataGridViewImageCellLayout.Zoom;
+            //
             // column_player_name
-            // 
+            //
             this.column_player_name.HeaderText = "Player Name";
             this.column_player_name.Name = "column_player_name";
             this.column_player_name.ReadOnly = true;
@@ -483,14 +502,61 @@
             this.column_player_assists.Name = "column_player_assists";
             this.column_player_assists.ReadOnly = true;
             this.column_player_assists.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
+            //
             // column_kda
-            // 
+            //
             this.column_kda.HeaderText = "KDA";
             this.column_kda.Name = "column_kda";
             this.column_kda.ReadOnly = true;
             this.column_kda.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
+            //
+            // identity_tab_page
+            //
+            this.identity_tab_page.Controls.Add(this.identity_table);
+            this.identity_tab_page.Location = new System.Drawing.Point(4, 22);
+            this.identity_tab_page.Name = "identity_tab_page";
+            this.identity_tab_page.Padding = new System.Windows.Forms.Padding(3);
+            this.identity_tab_page.Size = new System.Drawing.Size(768, 624);
+            this.identity_tab_page.TabIndex = 7;
+            this.identity_tab_page.Text = "Identity";
+            this.identity_tab_page.UseVisualStyleBackColor = true;
+            //
+            // identity_table
+            //
+            this.identity_table.AllowUserToAddRows = false;
+            this.identity_table.AllowUserToDeleteRows = false;
+            this.identity_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.identity_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.column_identity_name,
+            this.column_identity_xuid,
+            this.column_identity_machine});
+            this.identity_table.Location = new System.Drawing.Point(6, 6);
+            this.identity_table.Name = "identity_table";
+            this.identity_table.ReadOnly = true;
+            this.identity_table.Size = new System.Drawing.Size(756, 599);
+            this.identity_table.TabIndex = 0;
+            //
+            // column_identity_name
+            //
+            this.column_identity_name.HeaderText = "Player Name";
+            this.column_identity_name.Name = "column_identity_name";
+            this.column_identity_name.ReadOnly = true;
+            this.column_identity_name.Width = 150;
+            //
+            // column_identity_xuid
+            //
+            this.column_identity_xuid.HeaderText = "Xbox Identifier";
+            this.column_identity_xuid.Name = "column_identity_xuid";
+            this.column_identity_xuid.ReadOnly = true;
+            this.column_identity_xuid.Width = 200;
+            //
+            // column_identity_machine
+            //
+            this.column_identity_machine.HeaderText = "Machine Identifier";
+            this.column_identity_machine.Name = "column_identity_machine";
+            this.column_identity_machine.ReadOnly = true;
+            this.column_identity_machine.Width = 200;
+            //
             // weapon_stats_tab
             // 
             this.weapon_stats_tab.Controls.Add(this.weapon_player_select);
@@ -840,6 +906,7 @@
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.hook_status_label,
             this.life_cycle_status_label,
             this.variant_status_label,
             this.game_type_status_label,
@@ -851,9 +918,15 @@
             this.statusStrip1.SizingGrip = false;
             this.statusStrip1.TabIndex = 5;
             this.statusStrip1.Text = "statusStrip1";
-            // 
+            //
+            // hook_status_label
+            //
+            this.hook_status_label.Name = "hook_status_label";
+            this.hook_status_label.Size = new System.Drawing.Size(42, 17);
+            this.hook_status_label.Text = "Ready";
+            //
             // life_cycle_status_label
-            // 
+            //
             this.life_cycle_status_label.Name = "life_cycle_status_label";
             this.life_cycle_status_label.Size = new System.Drawing.Size(61, 17);
             this.life_cycle_status_label.Text = "Life Cycle:";
@@ -916,6 +989,8 @@
             this.groupBox1.PerformLayout();
             this.players_tab_page.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.players_table)).EndInit();
+            this.identity_tab_page.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.identity_table)).EndInit();
             this.weapon_stats_tab.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.weapon_stat_table)).EndInit();
             this.debug_tab.ResumeLayout(false);
@@ -937,6 +1012,11 @@
         #endregion
         private System.Windows.Forms.TabControl main_tab_control;
         private System.Windows.Forms.TabPage players_tab_page;
+        private System.Windows.Forms.TabPage identity_tab_page;
+        private System.Windows.Forms.DataGridView identity_table;
+        private System.Windows.Forms.DataGridViewTextBoxColumn column_identity_name;
+        private System.Windows.Forms.DataGridViewTextBoxColumn column_identity_xuid;
+        private System.Windows.Forms.DataGridViewTextBoxColumn column_identity_machine;
         private System.Windows.Forms.Timer main_timer;
         private System.Windows.Forms.DataGridView players_table;
         private System.Windows.Forms.TabPage weapon_stats_tab;
@@ -948,6 +1028,7 @@
         private System.Windows.Forms.ToolStripStatusLabel variant_status_label;
         private System.Windows.Forms.ToolStripStatusLabel game_type_status_label;
         private System.Windows.Forms.ToolStripStatusLabel map_status_label;
+        private System.Windows.Forms.ToolStripStatusLabel hook_status_label;
         private System.Windows.Forms.DataGridViewTextBoxColumn weapon_name_coluimn;
         private System.Windows.Forms.DataGridViewTextBoxColumn weapon_kills_column;
         private System.Windows.Forms.DataGridViewTextBoxColumn weapon_headshot_column;
@@ -1000,6 +1081,7 @@
         private System.Windows.Forms.TextBox obs_accuracy_source_text_box;
         private System.Windows.Forms.DataGridViewComboBoxColumn obs_scene_player_scene_column;
         private System.Windows.Forms.DataGridViewComboBoxColumn obs_scene_player_name_column;
+        private System.Windows.Forms.DataGridViewImageColumn column_player_emblem;
         private System.Windows.Forms.DataGridViewTextBoxColumn column_player_name;
         private System.Windows.Forms.DataGridViewTextBoxColumn column_player_team;
         private System.Windows.Forms.DataGridViewTextBoxColumn column_player_score;
