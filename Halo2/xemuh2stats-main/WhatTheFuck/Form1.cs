@@ -746,13 +746,8 @@ namespace xemuh2stats
                         UpdateHookStatus("Hooked successfully!");
                         is_valid = true;
 
-                        // Apply dedi mode immediately after hook (don't wait for lobby)
-                        try
-                        {
-                            Program.memory.WriteBool(Program.exec_resolver["profile_enabled"].address,
-                                !profile_disabled_check_box.Checked, false);
-                        }
-                        catch { /* Ignore if this fails - will be retried in timer */ }
+                        // Dedi mode will be applied by the timer when game enters lobby state
+                        // (writing at wrong game state can cause ghost player issues)
 
                         configuration_combo_box.Enabled = false;
                         settings_group_box.Enabled = false;
@@ -807,13 +802,18 @@ namespace xemuh2stats
 
         private void profile_disabled_check_box_CheckedChanged(object sender, EventArgs e)
         {
-            // Apply dedi mode immediately when checkbox is toggled (if hooked)
+            // Apply dedi mode immediately when checkbox is toggled (only if hooked AND in lobby)
             if (is_valid && Program.memory != null)
             {
                 try
                 {
-                    Program.memory.WriteBool(Program.exec_resolver["profile_enabled"].address,
-                        !profile_disabled_check_box.Checked, false);
+                    var cycle = (life_cycle)Program.memory.ReadInt(Program.exec_resolver["life_cycle"].address);
+                    if (cycle == life_cycle.in_lobby)
+                    {
+                        Program.memory.WriteBool(Program.exec_resolver["profile_enabled"].address,
+                            !profile_disabled_check_box.Checked, false);
+                    }
+                    // If not in lobby, the timer will apply it when we return to lobby
                 }
                 catch { /* Ignore errors */ }
             }
