@@ -562,6 +562,19 @@ namespace xemuh2stats
             }
         }
 
+        private void identity_table_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                var cellValue = identity_table.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+                if (cellValue != null && !string.IsNullOrEmpty(cellValue.ToString()))
+                {
+                    Clipboard.SetText(cellValue.ToString());
+                    UpdateHookStatus($"Copied: {cellValue}");
+                }
+            }
+        }
+
         private void render_debug_tab()
         {
 

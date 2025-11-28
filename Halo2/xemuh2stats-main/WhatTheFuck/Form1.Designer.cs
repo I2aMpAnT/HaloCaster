@@ -552,6 +552,7 @@
             this.identity_table.ReadOnly = true;
             this.identity_table.Size = new System.Drawing.Size(756, 599);
             this.identity_table.TabIndex = 0;
+            this.identity_table.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.identity_table_CellClick);
             //
             // column_identity_name
             //
