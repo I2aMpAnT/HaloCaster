@@ -144,12 +144,23 @@ namespace xemuh2stats
         {
             if (xemu_proccess != null)
             {
-                if (xemu_proccess.HasExited)
+                try
                 {
-                    is_valid = false;
-                    configuration_combo_box.Enabled = true;
-                    settings_group_box.Enabled = true;
-                    xemu_launch_button.Enabled = true;
+                    if (xemu_proccess.HasExited)
+                    {
+                        is_valid = false;
+                        configuration_combo_box.Enabled = true;
+                        settings_group_box.Enabled = true;
+                        xemu_launch_button.Enabled = true;
+                        hook_only_button.Enabled = true;
+                        xemu_proccess = null;
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    // Access denied - process handle doesn't have query rights
+                    // This can happen when using Hook Only with a process we didn't start
+                    // Just ignore and assume process is still running
                 }
             }
 
