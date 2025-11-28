@@ -102,6 +102,9 @@ namespace xemuh2stats
             // Explicitly set dedi mode to checked on startup (Designer default may not be reliable)
             profile_disabled_check_box.Checked = true;
 
+            // Apply dark mode on startup
+            ApplyTheme();
+
             // Set default Xemu path to Desktop
             if (string.IsNullOrEmpty(xemu_path_text_box.Text))
             {
@@ -1078,6 +1081,95 @@ namespace xemuh2stats
         private void websocket_bind_link_label_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             Process.Start("https://networkengineering.stackexchange.com/a/59838");
+        }
+
+        // Dark mode toggle
+        private bool isDarkMode = true; // Default to dark mode
+
+        private void theme_toggle_button_Click(object sender, EventArgs e)
+        {
+            isDarkMode = !isDarkMode;
+            ApplyTheme();
+        }
+
+        private void ApplyTheme()
+        {
+            Color backColor, foreColor, controlBackColor, gridBackColor, gridForeColor;
+
+            if (isDarkMode)
+            {
+                backColor = Color.FromArgb(30, 30, 30);
+                foreColor = Color.White;
+                controlBackColor = Color.FromArgb(45, 45, 48);
+                gridBackColor = Color.FromArgb(37, 37, 38);
+                gridForeColor = Color.White;
+                theme_toggle_button.Text = "☀";
+            }
+            else
+            {
+                backColor = SystemColors.Control;
+                foreColor = SystemColors.ControlText;
+                controlBackColor = SystemColors.Window;
+                gridBackColor = SystemColors.Window;
+                gridForeColor = SystemColors.ControlText;
+                theme_toggle_button.Text = "🌙";
+            }
+
+            this.BackColor = backColor;
+            this.ForeColor = foreColor;
+
+            ApplyThemeToControls(this.Controls, backColor, foreColor, controlBackColor, gridBackColor, gridForeColor);
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls, Color backColor, Color foreColor, Color controlBackColor, Color gridBackColor, Color gridForeColor)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is DataGridView dgv)
+                {
+                    dgv.BackgroundColor = gridBackColor;
+                    dgv.ForeColor = gridForeColor;
+                    dgv.DefaultCellStyle.BackColor = gridBackColor;
+                    dgv.DefaultCellStyle.ForeColor = gridForeColor;
+                    dgv.ColumnHeadersDefaultCellStyle.BackColor = backColor;
+                    dgv.ColumnHeadersDefaultCellStyle.ForeColor = foreColor;
+                    dgv.EnableHeadersVisualStyles = false;
+                }
+                else if (control is TextBox || control is ComboBox || control is RichTextBox)
+                {
+                    control.BackColor = controlBackColor;
+                    control.ForeColor = foreColor;
+                }
+                else if (control is Button btn)
+                {
+                    if (btn != theme_toggle_button)
+                    {
+                        btn.BackColor = controlBackColor;
+                        btn.ForeColor = foreColor;
+                        btn.FlatStyle = FlatStyle.Flat;
+                        btn.FlatAppearance.BorderColor = Color.Gray;
+                    }
+                }
+                else if (control is TabControl || control is TabPage || control is GroupBox || control is Panel)
+                {
+                    control.BackColor = backColor;
+                    control.ForeColor = foreColor;
+                }
+                else if (control is Label || control is CheckBox || control is LinkLabel)
+                {
+                    control.ForeColor = foreColor;
+                }
+                else if (control is StatusStrip ss)
+                {
+                    ss.BackColor = backColor;
+                    ss.ForeColor = foreColor;
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls, backColor, foreColor, controlBackColor, gridBackColor, gridForeColor);
+                }
+            }
         }
     }
 

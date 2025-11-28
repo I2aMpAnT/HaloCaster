@@ -56,6 +56,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.xemu_launch_button = new System.Windows.Forms.Button();
             this.hook_only_button = new System.Windows.Forms.Button();
+            this.theme_toggle_button = new System.Windows.Forms.Button();
             this.players_tab_page = new System.Windows.Forms.TabPage();
             this.players_table = new System.Windows.Forms.DataGridView();
             this.column_player_emblem = new System.Windows.Forms.DataGridViewImageColumn();
@@ -1006,9 +1007,24 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 687);
+            this.Controls.Add(this.theme_toggle_button);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.main_tab_control);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            //
+            // theme_toggle_button
+            //
+            this.theme_toggle_button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.theme_toggle_button.FlatAppearance.BorderSize = 0;
+            this.theme_toggle_button.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.theme_toggle_button.Font = new System.Drawing.Font("Segoe UI", 14F);
+            this.theme_toggle_button.Location = new System.Drawing.Point(760, 2);
+            this.theme_toggle_button.Name = "theme_toggle_button";
+            this.theme_toggle_button.Size = new System.Drawing.Size(36, 32);
+            this.theme_toggle_button.TabIndex = 100;
+            this.theme_toggle_button.Text = "☀";
+            this.theme_toggle_button.UseVisualStyleBackColor = true;
+            this.theme_toggle_button.Click += new System.EventHandler(this.theme_toggle_button_Click);
             this.Name = "Form1";
             this.Text = "I hate my life";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
@@ -1077,6 +1093,7 @@
         private System.Windows.Forms.TextBox xemu_path_text_box;
         private System.Windows.Forms.Button xemu_launch_button;
         private System.Windows.Forms.Button hook_only_button;
+        private System.Windows.Forms.Button theme_toggle_button;
         private System.Windows.Forms.DataGridViewTextBoxColumn asdf_1;
         private System.Windows.Forms.DataGridViewTextBoxColumn debug_index_column;
         private System.Windows.Forms.DataGridViewTextBoxColumn asdf_2;
