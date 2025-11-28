@@ -400,13 +400,24 @@ namespace xemuh2stats
 
         private void render_players_tab()
         {
-            int test_player_count =
-                Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+            // During post_game or when game is ending, use cached data to avoid reading invalid memory
+            var cycle = (life_cycle)Program.memory.ReadInt(Program.exec_resolver["life_cycle"].address);
+            bool useCache = (cycle == life_cycle.post_game || real_time_lock) && real_time_cache.Count > 0;
 
-            var variant = variant_details.get();
-            for (int i = 0; i < test_player_count && i < players_table.Rows.Count; i++)
+            int player_count;
+            if (useCache)
             {
-                var player = real_time_player_stats.get(i);
+                player_count = real_time_cache.Count;
+            }
+            else
+            {
+                player_count = Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+            }
+
+            var variant = useCache ? Program.variant_details_cache : variant_details.get();
+            for (int i = 0; i < player_count && i < players_table.Rows.Count; i++)
+            {
+                var player = useCache ? real_time_cache[i] : real_time_player_stats.get(i);
 
                 // Load emblem image (wrapped in try-catch to prevent crashes)
                 try

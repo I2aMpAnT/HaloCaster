@@ -379,10 +379,12 @@
             this.disable_rendering_check_box.UseVisualStyleBackColor = true;
             this.disable_rendering_check_box.Visible = false;
             this.disable_rendering_check_box.CheckedChanged += new System.EventHandler(this.disable_rendering_check_box_CheckedChanged);
-            // 
+            //
             // profile_disabled_check_box
-            // 
+            //
             this.profile_disabled_check_box.AutoSize = true;
+            this.profile_disabled_check_box.Checked = true;
+            this.profile_disabled_check_box.CheckState = System.Windows.Forms.CheckState.Checked;
             this.profile_disabled_check_box.Location = new System.Drawing.Point(6, 19);
             this.profile_disabled_check_box.Name = "profile_disabled_check_box";
             this.profile_disabled_check_box.Size = new System.Drawing.Size(77, 17);
