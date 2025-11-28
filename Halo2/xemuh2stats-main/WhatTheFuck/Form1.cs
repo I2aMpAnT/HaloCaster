@@ -99,6 +99,9 @@ namespace xemuh2stats
         {
             InitializeComponent();
 
+            // Explicitly set dedi mode to checked on startup (Designer default may not be reliable)
+            profile_disabled_check_box.Checked = true;
+
             // Set default Xemu path to Desktop
             if (string.IsNullOrEmpty(xemu_path_text_box.Text))
             {
@@ -742,6 +745,14 @@ namespace xemuh2stats
 
                         UpdateHookStatus("Hooked successfully!");
                         is_valid = true;
+
+                        // Apply dedi mode immediately after hook (don't wait for lobby)
+                        try
+                        {
+                            Program.memory.WriteBool(Program.exec_resolver["profile_enabled"].address,
+                                !profile_disabled_check_box.Checked, false);
+                        }
+                        catch { /* Ignore if this fails - will be retried in timer */ }
 
                         configuration_combo_box.Enabled = false;
                         settings_group_box.Enabled = false;
