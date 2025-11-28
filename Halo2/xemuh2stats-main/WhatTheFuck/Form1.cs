@@ -713,10 +713,16 @@ namespace xemuh2stats
                     try
                     {
                         UpdateHookStatus("Step 1: Launching XEMU...");
+
+                        // Get the directory where xemu.exe is located
+                        string xemuDirectory = System.IO.Path.GetDirectoryName(xemu_path);
+
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
                             FileName = xemu_path,
                             Arguments = $"-qmp tcp:localhost:{port},server,nowait",
+                            WorkingDirectory = xemuDirectory,  // XEMU needs to run from its own folder
+                            UseShellExecute = false,  // Required when setting WorkingDirectory
                         };
                         xemu_proccess = Process.Start(startInfo);
 
