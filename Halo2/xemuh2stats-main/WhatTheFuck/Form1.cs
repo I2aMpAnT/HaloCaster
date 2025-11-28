@@ -669,11 +669,17 @@ namespace xemuh2stats
 
             // Test if linear mapping works by reading the tags address
             var test_tags_value = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+            var usedLinearMapping = true;
 
             // If linear mapping returns 0, try per-address translation (for non-linear page tables)
             if (test_tags_value == 0)
             {
+                usedLinearMapping = false;
                 UpdateHookStatus("Step 5b: Linear mapping failed, trying per-address translation...");
+
+                // Clear any cached translations
+                Program.qmp.ClearCaches();
+
                 const ulong XBE_BASE = 0x8005C000;
 
                 foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
@@ -688,9 +694,14 @@ namespace xemuh2stats
                         // If per-address translation fails, keep the linear address
                     }
                 }
+
+                // Re-test with per-address translation
+                test_tags_value = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
             }
 
-            UpdateHookStatus("Step 5c: Reading game state pointers...");
+            string translationMethod = usedLinearMapping ? "linear" : "per-address";
+            long tagsAddr = Program.exec_resolver["tags"].address;
+            UpdateHookStatus($"Step 5c: Using {translationMethod} mapping (tags@0x{tagsAddr:X}={test_tags_value:X})");
 
             var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
             var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
@@ -708,10 +719,19 @@ namespace xemuh2stats
                 Application.DoEvents();
                 game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
                 waitAttempts++;
+                if (waitAttempts % 50 == 0) // Update status every 5 seconds
+                {
+                    UpdateHookStatus($"Step 5d: Waiting... ({translationMethod}, tags@0x{tagsAddr:X}=0x{game_state_offset:X})");
+                }
                 if (waitAttempts > 600) // 60 second timeout
                 {
-                    UpdateHookStatus("Timeout - game not loaded");
-                    MessageBox.Show("Timeout waiting for game to load. Please load a game in XEMU and try again.", "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    UpdateHookStatus($"Timeout ({translationMethod})");
+                    MessageBox.Show($"Timeout waiting for game to load.\n\n" +
+                        $"Translation method: {translationMethod}\n" +
+                        $"Tags address: 0x{tagsAddr:X}\n" +
+                        $"Tags value: 0x{game_state_offset:X}\n\n" +
+                        "Make sure Halo 2 is loaded to the main menu before clicking Launch.",
+                        "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
