@@ -55,6 +55,7 @@
             this.configuration_combo_box = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.xemu_launch_button = new System.Windows.Forms.Button();
+            this.hook_only_button = new System.Windows.Forms.Button();
             this.players_tab_page = new System.Windows.Forms.TabPage();
             this.players_table = new System.Windows.Forms.DataGridView();
             this.column_player_emblem = new System.Windows.Forms.DataGridViewImageColumn();
@@ -163,6 +164,7 @@
             this.setup_tab_page.Controls.Add(this.configuration_combo_box);
             this.setup_tab_page.Controls.Add(this.label1);
             this.setup_tab_page.Controls.Add(this.xemu_launch_button);
+            this.setup_tab_page.Controls.Add(this.hook_only_button);
             this.setup_tab_page.Location = new System.Drawing.Point(4, 22);
             this.setup_tab_page.Name = "setup_tab_page";
             this.setup_tab_page.Padding = new System.Windows.Forms.Padding(3);
@@ -425,15 +427,25 @@
             //
             // xemu_launch_button
             //
-            this.xemu_launch_button.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.xemu_launch_button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.xemu_launch_button.Location = new System.Drawing.Point(12, 517);
             this.xemu_launch_button.Name = "xemu_launch_button";
-            this.xemu_launch_button.Size = new System.Drawing.Size(750, 101);
+            this.xemu_launch_button.Size = new System.Drawing.Size(370, 101);
             this.xemu_launch_button.TabIndex = 20;
             this.xemu_launch_button.Text = "Launch";
             this.xemu_launch_button.UseVisualStyleBackColor = true;
             this.xemu_launch_button.Click += new System.EventHandler(this.xemu_launch_button_Click);
+            //
+            // hook_only_button
+            //
+            this.hook_only_button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.hook_only_button.Location = new System.Drawing.Point(392, 517);
+            this.hook_only_button.Name = "hook_only_button";
+            this.hook_only_button.Size = new System.Drawing.Size(370, 101);
+            this.hook_only_button.TabIndex = 25;
+            this.hook_only_button.Text = "Hook Only";
+            this.hook_only_button.UseVisualStyleBackColor = true;
+            this.hook_only_button.Click += new System.EventHandler(this.hook_only_button_Click);
             // 
             // players_tab_page
             // 
@@ -1064,6 +1076,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox xemu_path_text_box;
         private System.Windows.Forms.Button xemu_launch_button;
+        private System.Windows.Forms.Button hook_only_button;
         private System.Windows.Forms.DataGridViewTextBoxColumn asdf_1;
         private System.Windows.Forms.DataGridViewTextBoxColumn debug_index_column;
         private System.Windows.Forms.DataGridViewTextBoxColumn asdf_2;
