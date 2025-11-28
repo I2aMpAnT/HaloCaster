@@ -256,7 +256,16 @@ public class QmpProxy
 
     public QmpProxy(int port)
     {
+        // Clear static caches to avoid stale data from previous failed attempts
+        ClearCaches();
         Connect(port);
+    }
+
+    public static void ClearCaches()
+    {
+        knownAddresses.Clear();
+        memoryCache.Clear();
+        Console.WriteLine("QMP caches cleared");
     }
 
     private void Connect(int port)
@@ -479,7 +488,14 @@ public class QmpProxy
         {
             // Log the actual response for debugging
             Console.WriteLine($"Error converting GVA 0x{addr:X} to GPA. Response: {rawResponse}");
-            throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Game may not be fully loaded or QMP response format changed.");
+
+            // Check for specific error responses
+            if (rawResponse.Contains("Unmapped"))
+            {
+                throw new Exception($"Address 0x{addr:X} is unmapped. Halo 2 must be fully loaded to the main menu before hooking. If already at menu, the game region/version may be incompatible.");
+            }
+
+            throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Response was: {rawResponse.Trim()}");
         }
     }
 
