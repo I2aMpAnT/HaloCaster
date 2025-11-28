@@ -746,9 +746,8 @@ namespace xemuh2stats
                         string qmpArgs = $"-qmp tcp:localhost:{port},server,nowait";
 
                         // Debug: Show what we're launching
-                        Console.WriteLine($"Launching XEMU: {xemu_path}");
-                        Console.WriteLine($"Arguments: {qmpArgs}");
-                        Console.WriteLine($"Working Dir: {xemuDirectory}");
+                        MessageBox.Show($"Launching XEMU:\n\nPath: {xemu_path}\n\nArguments: {qmpArgs}\n\nWorking Dir: {xemuDirectory}",
+                            "Debug - Launch Command", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
