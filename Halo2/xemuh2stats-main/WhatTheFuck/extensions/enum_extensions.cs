@@ -12,8 +12,12 @@ namespace WhatTheFuck.extensions
     {
         public static string GetDisplayName(this System.Enum enumValue)
         {
-            var a = enumValue.GetType().GetMember(enumValue.ToString()).First();
-            return (a.GetCustomAttribute<DisplayAttribute>() != null ? a.GetCustomAttribute<DisplayAttribute>().GetName() : enumValue.ToString()) ?? string.Empty;
+            var member = enumValue.GetType().GetMember(enumValue.ToString()).FirstOrDefault();
+            if (member == null)
+                return enumValue.ToString();
+
+            var displayAttr = member.GetCustomAttribute<DisplayAttribute>();
+            return displayAttr?.GetName() ?? enumValue.ToString();
         }
     }
 }
