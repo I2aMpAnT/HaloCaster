@@ -1065,9 +1065,9 @@ namespace xemuh2stats
             ApplyThemeToControls(this.Controls, backColor, foreColor, controlBackColor, gridBackColor, gridForeColor);
         }
 
-        private void ApplyThemeToControls(Control.ControlCollection controls, Color backColor, Color foreColor, Color controlBackColor, Color gridBackColor, Color gridForeColor)
+        private void ApplyThemeToControls(System.Windows.Forms.Control.ControlCollection controls, System.Drawing.Color backColor, System.Drawing.Color foreColor, System.Drawing.Color controlBackColor, System.Drawing.Color gridBackColor, System.Drawing.Color gridForeColor)
         {
-            foreach (Control control in controls)
+            foreach (System.Windows.Forms.Control control in controls)
             {
                 if (control is DataGridView dgv)
                 {
@@ -1091,7 +1091,7 @@ namespace xemuh2stats
                         btn.BackColor = controlBackColor;
                         btn.ForeColor = foreColor;
                         btn.FlatStyle = FlatStyle.Flat;
-                        btn.FlatAppearance.BorderColor = Color.Gray;
+                        btn.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
                     }
                 }
                 else if (control is TabControl || control is TabPage || control is GroupBox || control is Panel)
