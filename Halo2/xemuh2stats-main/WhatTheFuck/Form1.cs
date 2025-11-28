@@ -744,22 +744,41 @@ namespace xemuh2stats
                         // Get the directory where xemu.exe is located
                         string xemuDirectory = System.IO.Path.GetDirectoryName(xemu_path);
                         string qmpArgs = $"-qmp tcp:localhost:{port},server,nowait";
+                        string fullCommand = $"\"{xemu_path}\" {qmpArgs}";
 
                         // Debug: Show what we're launching
-                        MessageBox.Show($"Launching XEMU:\n\nPath: {xemu_path}\n\nArguments: {qmpArgs}\n\nWorking Dir: {xemuDirectory}",
+                        MessageBox.Show($"Launching XEMU:\n\nCommand: {fullCommand}\n\nWorking Dir: {xemuDirectory}",
                             "Debug - Launch Command", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+                        // Use cmd.exe /c to ensure arguments are passed exactly as specified
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
-                            FileName = xemu_path,
-                            Arguments = qmpArgs,
+                            FileName = "cmd.exe",
+                            Arguments = $"/c {fullCommand}",
                             WorkingDirectory = xemuDirectory,
-                            UseShellExecute = true,  // Use shell execute to properly pass arguments
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
                         };
-                        xemu_proccess = Process.Start(startInfo);
+                        Process.Start(startInfo);
 
                         UpdateHookStatus("Step 2: Waiting for XEMU startup...");
-                        System.Threading.Thread.Sleep(7000);
+                        System.Threading.Thread.Sleep(5000);
+
+                        // Find the XEMU process after it starts
+                        var xemuProcesses = Process.GetProcessesByName("xemu");
+                        if (xemuProcesses.Length > 0)
+                        {
+                            xemu_proccess = xemuProcesses[0];
+                        }
+                        else
+                        {
+                            UpdateHookStatus("Error: XEMU process not found");
+                            MessageBox.Show("XEMU was launched but process not found.\nTry clicking Hook Only instead.",
+                                "XEMU Launch Issue", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+
+                        System.Threading.Thread.Sleep(2000);
 
                         // Validate that XEMU actually started
                         if (xemu_proccess == null || xemu_proccess.HasExited)
