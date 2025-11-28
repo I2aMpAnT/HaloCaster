@@ -155,7 +155,6 @@ namespace xemuh2stats
                         configuration_combo_box.Enabled = true;
                         settings_group_box.Enabled = true;
                         xemu_launch_button.Enabled = true;
-                        hook_only_button.Enabled = true;
                         xemu_proccess = null;
                     }
                 }
@@ -860,61 +859,6 @@ namespace xemuh2stats
                         MessageBox.Show(errorDetails, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
-            }
-        }
-
-        private void hook_only_button_Click(object sender, EventArgs e)
-        {
-            int port = int.Parse(xemu_port_text_box.Text);
-            try
-            {
-                UpdateHookStatus("Finding XEMU process...");
-
-                // Find already running XEMU process
-                var xemuProcesses = Process.GetProcessesByName("xemu");
-                if (xemuProcesses.Length == 0)
-                {
-                    MessageBox.Show("XEMU is not running.\n\nPlease start XEMU manually with QMP enabled:\nxemu.exe -qmp tcp:localhost:" + port + ",server,nowait\n\nThen load Halo 2 and get to the main menu before clicking Hook Only.",
-                        "XEMU Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    UpdateHookStatus("Error: XEMU not running");
-                    return;
-                }
-
-                xemu_proccess = xemuProcesses[0];
-
-                UpdateHookStatus("Connecting to QMP...");
-                Program.qmp = new QmpProxy(port);
-
-                UpdateHookStatus("Attaching to process memory...");
-                Program.memory = new MemoryHandler(xemu_proccess);
-
-                UpdateHookStatus("Resolving addresses...");
-                resolve_addresses();
-
-                UpdateHookStatus("Hooked successfully!");
-                is_valid = true;
-
-                configuration_combo_box.Enabled = false;
-                settings_group_box.Enabled = false;
-                xemu_launch_button.Enabled = false;
-                hook_only_button.Enabled = false;
-
-                UpdateHookStatus("Starting WebSocket server...");
-                websocket_communicator.start(websocket_bind_text_box.Text, websocket_bind_port_text_box.Text);
-                UpdateHookStatus("Ready - Hooked");
-            }
-            catch (Exception ex)
-            {
-                UpdateHookStatus($"Error: {ex.Message}");
-
-                string errorDetails = $"Hook failed: {ex.Message}\n\n" +
-                    $"QMP Port: {port}\n\n" +
-                    "Make sure:\n" +
-                    "- XEMU was started with: -qmp tcp:localhost:" + port + ",server,nowait\n" +
-                    "- Halo 2 is loaded and at the main menu\n" +
-                    "- No firewall is blocking port " + port;
-
-                MessageBox.Show(errorDetails, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
