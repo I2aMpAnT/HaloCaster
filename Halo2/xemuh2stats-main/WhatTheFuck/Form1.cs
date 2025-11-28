@@ -714,15 +714,32 @@ namespace xemuh2stats
                     {
                         UpdateHookStatus("Step 1: Launching XEMU...");
 
+                        // Kill any existing XEMU processes first to avoid connecting to wrong instance
+                        foreach (var proc in Process.GetProcessesByName("xemu"))
+                        {
+                            try
+                            {
+                                proc.Kill();
+                                proc.WaitForExit(3000);
+                            }
+                            catch { /* Ignore errors killing old process */ }
+                        }
+
                         // Get the directory where xemu.exe is located
                         string xemuDirectory = System.IO.Path.GetDirectoryName(xemu_path);
+                        string qmpArgs = $"-qmp tcp:localhost:{port},server,nowait";
+
+                        // Debug: Show what we're launching
+                        Console.WriteLine($"Launching XEMU: {xemu_path}");
+                        Console.WriteLine($"Arguments: {qmpArgs}");
+                        Console.WriteLine($"Working Dir: {xemuDirectory}");
 
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
                             FileName = xemu_path,
-                            Arguments = $"-qmp tcp:localhost:{port},server,nowait",
-                            WorkingDirectory = xemuDirectory,  // XEMU needs to run from its own folder
-                            UseShellExecute = false,  // Required when setting WorkingDirectory
+                            Arguments = qmpArgs,
+                            WorkingDirectory = xemuDirectory,
+                            UseShellExecute = true,  // Use shell execute to properly pass arguments
                         };
                         xemu_proccess = Process.Start(startInfo);
 
