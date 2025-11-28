@@ -695,22 +695,33 @@ namespace xemuh2stats
                 var xemu_path = FindFileInDirectory(xemu_path_text_box.Text, "xemu.exe");
                 if (!string.IsNullOrEmpty(xemu_path))
                 {
+                    int port = int.Parse(xemu_port_text_box.Text);
                     try
                     {
                         UpdateHookStatus("Step 1: Launching XEMU...");
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
                             FileName = xemu_path,
-                            Arguments = $"-qmp tcp:localhost:{int.Parse(xemu_port_text_box.Text)},server,nowait",
+                            Arguments = $"-qmp tcp:localhost:{port},server,nowait",
                         };
                         xemu_proccess = Process.Start(startInfo);
 
                         UpdateHookStatus("Step 2: Waiting for XEMU startup...");
                         System.Threading.Thread.Sleep(7000);
 
+                        // Validate that XEMU actually started
+                        if (xemu_proccess == null || xemu_proccess.HasExited)
+                        {
+                            string exitInfo = xemu_proccess?.ExitCode.ToString() ?? "unknown";
+                            UpdateHookStatus("Error: XEMU failed to start");
+                            MessageBox.Show($"XEMU process failed to start or crashed immediately.\nExit code: {exitInfo}\n\nPlease check:\n- XEMU path is correct\n- XEMU is not already running\n- You have required permissions",
+                                "XEMU Launch Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+
                         UpdateHookStatus("Step 3: Connecting to QMP...");
                         // QmpProxy constructor has built-in retry logic
-                        Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
+                        Program.qmp = new QmpProxy(port);
 
                         UpdateHookStatus("Step 4: Attaching to process memory...");
                         Program.memory = new MemoryHandler(xemu_proccess);
@@ -732,7 +743,24 @@ namespace xemuh2stats
                     catch (Exception ex)
                     {
                         UpdateHookStatus($"Error: {ex.Message}");
-                        MessageBox.Show($"Hook failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                        // Provide detailed error information
+                        string processStatus = "Unknown";
+                        if (xemu_proccess != null)
+                        {
+                            processStatus = xemu_proccess.HasExited ? $"Exited (code: {xemu_proccess.ExitCode})" : "Still running";
+                        }
+
+                        string errorDetails = $"Hook failed: {ex.Message}\n\n" +
+                            $"XEMU Status: {processStatus}\n" +
+                            $"QMP Port: {port}\n\n" +
+                            "Possible causes:\n" +
+                            "- XEMU is still starting up (try again)\n" +
+                            "- Another process is using port " + port + "\n" +
+                            "- Firewall blocking connection\n" +
+                            "- XEMU crashed during startup";
+
+                        MessageBox.Show(errorDetails, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }

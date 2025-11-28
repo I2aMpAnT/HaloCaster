@@ -136,9 +136,12 @@
             this.statusStrip1.SuspendLayout();
             this.events_tab_page.SuspendLayout();
             this.SuspendLayout();
-            // 
+            //
             // main_tab_control
-            // 
+            //
+            this.main_tab_control.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.main_tab_control.Controls.Add(this.setup_tab_page);
             this.main_tab_control.Controls.Add(this.players_tab_page);
             this.main_tab_control.Controls.Add(this.identity_tab_page);
@@ -187,9 +190,12 @@
             this.configuration_save_button.Text = "Save";
             this.configuration_save_button.UseVisualStyleBackColor = true;
             this.configuration_save_button.Click += new System.EventHandler(this.configuration_save_button_Click);
-            // 
+            //
             // settings_group_box
-            // 
+            //
+            this.settings_group_box.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.settings_group_box.Controls.Add(this.websocket_bind_link_label);
             this.settings_group_box.Controls.Add(this.label11);
             this.settings_group_box.Controls.Add(this.label13);
@@ -413,9 +419,11 @@
             this.label1.TabIndex = 21;
             this.label1.Text = "Configuration:";
             this.label1.TextAlign = System.Drawing.ContentAlignment.TopRight;
-            // 
+            //
             // xemu_launch_button
-            // 
+            //
+            this.xemu_launch_button.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.xemu_launch_button.Location = new System.Drawing.Point(12, 517);
             this.xemu_launch_button.Name = "xemu_launch_button";
             this.xemu_launch_button.Size = new System.Drawing.Size(750, 101);
@@ -434,11 +442,14 @@
             this.players_tab_page.TabIndex = 0;
             this.players_tab_page.Text = "Players";
             this.players_tab_page.UseVisualStyleBackColor = true;
-            // 
+            //
             // players_table
-            // 
+            //
             this.players_table.AllowUserToAddRows = false;
             this.players_table.AllowUserToDeleteRows = false;
+            this.players_table.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.players_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.players_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.column_player_emblem,
@@ -525,6 +536,9 @@
             //
             this.identity_table.AllowUserToAddRows = false;
             this.identity_table.AllowUserToDeleteRows = false;
+            this.identity_table.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.identity_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.identity_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.column_identity_name,
@@ -576,11 +590,14 @@
             this.weapon_player_select.Name = "weapon_player_select";
             this.weapon_player_select.Size = new System.Drawing.Size(121, 21);
             this.weapon_player_select.TabIndex = 1;
-            // 
+            //
             // weapon_stat_table
-            // 
+            //
             this.weapon_stat_table.AllowUserToAddRows = false;
             this.weapon_stat_table.AllowUserToDeleteRows = false;
+            this.weapon_stat_table.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.weapon_stat_table.CausesValidation = false;
             this.weapon_stat_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.weapon_stat_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
@@ -976,7 +993,7 @@
             this.ClientSize = new System.Drawing.Size(800, 687);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.main_tab_control);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.Name = "Form1";
             this.Text = "I hate my life";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);

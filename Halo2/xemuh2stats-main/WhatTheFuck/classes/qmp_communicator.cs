@@ -240,34 +240,42 @@ public class QmpProxy
 
     private void Connect(int port)
     {
-        int i = 0;
-        while (true)
+        const int maxRetries = 15;
+        Exception lastException = null;
+
+        for (int i = 0; i < maxRetries; i++)
         {
             if (i > 0)
             {
-                System.Threading.Thread.Sleep(1000);
+                // Progressive delay: 1s, 2s, 3s, 4s, 5s (max)
+                int delay = Math.Min(i, 5) * 1000;
+                System.Threading.Thread.Sleep(delay);
             }
 
             try
             {
+                // Dispose previous failed connection attempt if any
+                if (_qmp != null)
+                {
+                    try { _qmp.Close(); } catch { }
+                    _qmp = null;
+                }
+
                 _qmp = new QEMUMonitorProtocol("localhost", false);
                 _qmp.Connect(port);
+                return; // Success - exit the method
             }
-            catch
+            catch (Exception ex)
             {
-                if (i > 4)
-                {
-                    throw;
-                }
-                else
-                {
-                    i++;
-                    continue;
-                }
+                lastException = ex;
+                // Continue retrying
             }
-
-            break;
         }
+
+        // All retries exhausted - throw with helpful message
+        throw new Exception($"Failed to connect to QMP on port {port} after {maxRetries} attempts. " +
+            $"Last error: {lastException?.Message ?? "Unknown"}\n\n" +
+            "XEMU may need more time to start, or QMP is not enabled.");
     }
 
     private Dictionary<string, object> RunCmd(object cmd)
