@@ -706,9 +706,10 @@ namespace xemuh2stats
                         xemu_proccess = Process.Start(startInfo);
 
                         UpdateHookStatus("Step 2: Waiting for XEMU startup...");
-                        System.Threading.Thread.Sleep(5000);
+                        System.Threading.Thread.Sleep(7000);
 
                         UpdateHookStatus("Step 3: Connecting to QMP...");
+                        // QmpProxy constructor has built-in retry logic
                         Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
 
                         UpdateHookStatus("Step 4: Attaching to process memory...");
