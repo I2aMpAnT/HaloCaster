@@ -200,7 +200,8 @@
             }
 
             function handleTeamScoreboard(response) {
-                const teamIndex = response.team_index;
+                console.log('Received team scoreboard:', response);
+                const teamIndex = parseInt(response.team_index);
 
                 if (teamIndex === 0) {
                     redTeamData = response;
@@ -212,6 +213,7 @@
             }
 
             function renderScoreboard() {
+                console.log('Rendering - Red:', redTeamData, 'Blue:', blueTeamData);
                 // Update team headers
                 if (redTeamData) {
                     document.getElementById('red-team-name').textContent = redTeamData.team_name || 'Red Team';
