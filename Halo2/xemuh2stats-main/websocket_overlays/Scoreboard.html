@@ -213,7 +213,7 @@
             }
 
             function renderScoreboard() {
-                console.log('Rendering - Red:', redTeamData, 'Blue:', blueTeamData);
+                console.log('Rendering - Red players:', redTeamData?.players, 'Blue players:', blueTeamData?.players);
                 // Update team headers
                 if (redTeamData) {
                     document.getElementById('red-team-name').textContent = redTeamData.team_name || 'Red Team';
@@ -230,18 +230,23 @@
 
                 // Red team players
                 if (redTeamData && redTeamData.players) {
+                    console.log('Building red team rows, count:', redTeamData.players.length);
                     redTeamData.players.forEach(player => {
+                        console.log('Red player:', player);
                         html += buildPlayerRow(player, 'red', redTeamData.game_type);
                     });
                 }
 
                 // Blue team players
                 if (blueTeamData && blueTeamData.players) {
+                    console.log('Building blue team rows, count:', blueTeamData.players.length);
                     blueTeamData.players.forEach(player => {
+                        console.log('Blue player:', player);
                         html += buildPlayerRow(player, 'blue', blueTeamData.game_type);
                     });
                 }
 
+                console.log('Final HTML:', html);
                 playersSection.innerHTML = html;
             }
 
