@@ -235,7 +235,7 @@ namespace WhatTheFuck.classes
                 player_data.Add("secondary_color", secondaryCol);
                 player_data.Add("tertiary_color", tertiaryCol);
                 player_data.Add("quaternary_color", quaternaryCol);
-                player_data.Add("emblem_url", $"https://carnagereport.com/?P={primaryCol}&S={secondaryCol}&EP={tertiaryCol}&ES={quaternaryCol}&EF={emblemFg}&EB={emblemBg}&ET=0");
+                player_data.Add("emblem_url", $"https://carnagereport.com/emblem.html?P={primaryCol}&S={secondaryCol}&EP={tertiaryCol}&ES={quaternaryCol}&EF={emblemFg}&EB={emblemBg}&ET=0");
 
                 // Current weapon
                 if (state_player.unit_index != uint.MaxValue)

@@ -63,7 +63,9 @@ namespace xemuh2stats
 
             try
             {
-                string url = $"https://carnagereport.com/?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
+                // Note: emblem.html returns HTML with canvas rendering, not a direct image
+                // Players tab won't show emblems until a server-side image endpoint is added
+                string url = $"https://carnagereport.com/emblem.html?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
 
                 using (WebClient client = new WebClient())
                 {

@@ -527,7 +527,7 @@ namespace xemuh2stats.classes
             int emblemForeground = (int)profile.emblem_info.foreground_emblem;
             int emblemBackground = (int)profile.emblem_info.background_emblem;
 
-            return $"https://carnagereport.com/?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
+            return $"https://carnagereport.com/emblem.html?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
         }
 
         private static readonly List<string> identity_column_headers = new List<string>()
@@ -597,7 +597,7 @@ namespace xemuh2stats.classes
 
                     // Add emblem URL
                     var profile = gameStatePlayer.properties_1.profile_traits.profile;
-                    string emblemUrl = $"https://carnagereport.com/?P={(int)profile.primary_color}&S={(int)profile.secondary_color}&EP={(int)profile.tertiary_color}&ES={(int)profile.quaternary_color}&EF={(int)profile.emblem_info.foreground_emblem}&EB={(int)profile.emblem_info.background_emblem}&ET=0";
+                    string emblemUrl = $"https://carnagereport.com/emblem.html?P={(int)profile.primary_color}&S={(int)profile.secondary_color}&EP={(int)profile.tertiary_color}&ES={(int)profile.quaternary_color}&EF={(int)profile.emblem_info.foreground_emblem}&EB={(int)profile.emblem_info.background_emblem}&ET=0";
                     Cell emblemCell = new Cell()
                     {
                         CellValue = new CellValue(emblemUrl),
