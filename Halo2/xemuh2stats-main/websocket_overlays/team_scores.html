@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="websocket_client.js"></script>
+        <script src="config.js"></script>
+        <style>
+            @font-face {
+                font-family: 'UniversCondensedBold';
+                src: url('univers67condensedbold.otf') format('opentype');
+                font-weight: bold;
+                font-style: normal;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'UniversCondensedBold', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: transparent;
+                color: white;
+                display: flex;
+                justify-content: center;
+                padding: 10px;
+            }
+
+            #scores-container {
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .team-score {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                background: rgba(0, 0, 0, 0.7);
+                padding: 10px 25px;
+                border-radius: 8px;
+                min-width: 120px;
+                border-bottom: 4px solid;
+            }
+
+            .team-name {
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                opacity: 0.9;
+            }
+
+            .score {
+                font-size: 48px;
+                font-weight: bold;
+                text-shadow: 2px 2px 4px black;
+            }
+
+            .game-type {
+                font-size: 11px;
+                text-transform: uppercase;
+                opacity: 0.7;
+                margin-top: 2px;
+            }
+
+            /* Team colors */
+            .team-red { border-color: #ff4444; }
+            .team-blue { border-color: #4488ff; }
+            .team-green { border-color: #44ff44; }
+            .team-yellow { border-color: #ffff44; }
+            .team-purple { border-color: #aa44ff; }
+            .team-orange { border-color: #ff8844; }
+            .team-brown { border-color: #8b4513; }
+            .team-pink { border-color: #ff69b4; }
+            .team-default { border-color: #888888; }
+
+            .team-red .team-name { color: #ff6666; }
+            .team-blue .team-name { color: #6699ff; }
+            .team-green .team-name { color: #66ff66; }
+            .team-yellow .team-name { color: #ffff66; }
+            .team-purple .team-name { color: #cc66ff; }
+            .team-orange .team-name { color: #ffaa66; }
+            .team-brown .team-name { color: #cd853f; }
+            .team-pink .team-name { color: #ffb6c1; }
+
+            #connection-status {
+                position: fixed;
+                bottom: 5px;
+                right: 5px;
+                font-size: 10px;
+                color: #888;
+            }
+
+            .vs-divider {
+                font-size: 24px;
+                color: #666;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="scores-container">
+            <!-- Dynamic content will be injected here -->
+        </div>
+        <div id="connection-status">Connecting...</div>
+
+        <script>
+            const teamColors = {
+                '0': 'red',
+                '1': 'blue',
+                '2': 'yellow',
+                '3': 'green',
+                '4': 'purple',
+                '5': 'orange',
+                '6': 'brown',
+                '7': 'pink',
+                '8': 'default'
+            };
+
+            const client = new websocket_client();
+            let updateInterval;
+            let gameTypeDisplay = '';
+
+            async function init() {
+                const wsUrl = `ws://${window.config.host}:${window.config.port}`;
+
+                try {
+                    await client.connect(wsUrl);
+                    document.getElementById('connection-status').textContent = 'Connected';
+
+                    client.add_message_recieved_callback('get_team_scores', handleTeamScores);
+                    client.add_message_recieved_callback('close', handleDisconnect);
+
+                    // Initial request
+                    client.request_team_scores();
+
+                    // Poll every 500ms
+                    updateInterval = setInterval(() => {
+                        client.request_team_scores();
+                    }, 500);
+
+                } catch (error) {
+                    document.getElementById('connection-status').textContent = 'Connection failed';
+                    console.error('Failed to connect:', error);
+                    // Retry connection after 3 seconds
+                    setTimeout(init, 3000);
+                }
+            }
+
+            function handleDisconnect() {
+                document.getElementById('connection-status').textContent = 'Disconnected - Reconnecting...';
+                if (updateInterval) clearInterval(updateInterval);
+                setTimeout(init, 3000);
+            }
+
+            function handleTeamScores(response) {
+                const container = document.getElementById('scores-container');
+                gameTypeDisplay = response.game_type_display || response.game_type || '';
+
+                // Get active teams sorted by team index
+                const teams = response.teams || {};
+                const sortedTeamKeys = Object.keys(teams).sort((a, b) => parseInt(a) - parseInt(b));
+
+                if (sortedTeamKeys.length === 0) {
+                    container.innerHTML = '<div class="team-score team-default"><span class="team-name">No Teams</span><span class="score">-</span></div>';
+                    return;
+                }
+
+                let html = '';
+                sortedTeamKeys.forEach((teamKey, index) => {
+                    const team = teams[teamKey];
+                    const colorClass = 'team-' + (teamColors[teamKey] || 'default');
+
+                    if (index > 0) {
+                        html += '<span class="vs-divider">vs</span>';
+                    }
+
+                    html += `
+                        <div class="team-score ${colorClass}">
+                            <span class="team-name">${team.team_name || 'Team ' + teamKey}</span>
+                            <span class="score">${team.score}</span>
+                            <span class="game-type">${gameTypeDisplay}</span>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+
+            // Start
+            init();
+        </script>
+    </body>
+</html>

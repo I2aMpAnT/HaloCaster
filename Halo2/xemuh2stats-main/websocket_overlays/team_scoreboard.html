@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="websocket_client.js"></script>
+        <script src="config.js"></script>
+        <style>
+            @font-face {
+                font-family: 'UniversCondensedBold';
+                src: url('univers67condensedbold.otf') format('opentype');
+                font-weight: bold;
+                font-style: normal;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'UniversCondensedBold', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: transparent;
+                color: white;
+                padding: 10px;
+            }
+
+            #scoreboard-container {
+                background: rgba(0, 0, 0, 0.8);
+                border-radius: 8px;
+                overflow: hidden;
+                min-width: 400px;
+                max-width: 500px;
+            }
+
+            .team-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 15px;
+                border-bottom: 3px solid;
+            }
+
+            .team-name-header {
+                font-size: 20px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .team-score-header {
+                font-size: 32px;
+                font-weight: bold;
+                text-shadow: 2px 2px 4px black;
+            }
+
+            .game-type-label {
+                font-size: 11px;
+                text-transform: uppercase;
+                opacity: 0.7;
+            }
+
+            .players-table {
+                width: 100%;
+            }
+
+            .player-row {
+                display: flex;
+                align-items: center;
+                padding: 8px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .player-row:last-child {
+                border-bottom: none;
+            }
+
+            .player-row.dead {
+                opacity: 0.5;
+            }
+
+            .player-name {
+                flex: 1;
+                font-size: 16px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .player-weapon {
+                width: 100px;
+                font-size: 12px;
+                color: #aaa;
+                text-align: center;
+            }
+
+            .player-stats {
+                display: flex;
+                gap: 15px;
+                font-size: 14px;
+            }
+
+            .stat {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                min-width: 30px;
+            }
+
+            .stat-value {
+                font-size: 18px;
+                font-weight: bold;
+            }
+
+            .stat-label {
+                font-size: 9px;
+                text-transform: uppercase;
+                opacity: 0.6;
+            }
+
+            .respawn-timer {
+                color: #ff6666;
+                font-size: 14px;
+                margin-left: 10px;
+            }
+
+            /* Team colors */
+            .team-red .team-header { border-color: #ff4444; background: rgba(255, 68, 68, 0.2); }
+            .team-blue .team-header { border-color: #4488ff; background: rgba(68, 136, 255, 0.2); }
+            .team-green .team-header { border-color: #44ff44; background: rgba(68, 255, 68, 0.2); }
+            .team-yellow .team-header { border-color: #ffff44; background: rgba(255, 255, 68, 0.2); }
+            .team-purple .team-header { border-color: #aa44ff; background: rgba(170, 68, 255, 0.2); }
+            .team-orange .team-header { border-color: #ff8844; background: rgba(255, 136, 68, 0.2); }
+            .team-brown .team-header { border-color: #8b4513; background: rgba(139, 69, 19, 0.2); }
+            .team-pink .team-header { border-color: #ff69b4; background: rgba(255, 105, 180, 0.2); }
+            .team-default .team-header { border-color: #888888; background: rgba(136, 136, 136, 0.2); }
+
+            .team-red .team-name-header { color: #ff6666; }
+            .team-blue .team-name-header { color: #6699ff; }
+            .team-green .team-name-header { color: #66ff66; }
+            .team-yellow .team-name-header { color: #ffff66; }
+            .team-purple .team-name-header { color: #cc66ff; }
+            .team-orange .team-name-header { color: #ffaa66; }
+            .team-brown .team-name-header { color: #cd853f; }
+            .team-pink .team-name-header { color: #ffb6c1; }
+
+            #connection-status {
+                position: fixed;
+                bottom: 5px;
+                right: 5px;
+                font-size: 10px;
+                color: #888;
+            }
+
+            .no-players {
+                padding: 20px;
+                text-align: center;
+                color: #666;
+                font-style: italic;
+            }
+
+            .stat-kills .stat-value { color: #66ff66; }
+            .stat-deaths .stat-value { color: #ff6666; }
+            .stat-assists .stat-value { color: #6699ff; }
+        </style>
+    </head>
+    <body>
+        <div id="scoreboard-container">
+            <div class="team-header">
+                <div>
+                    <span class="team-name-header">Loading...</span>
+                    <span class="game-type-label"></span>
+                </div>
+                <span class="team-score-header">-</span>
+            </div>
+            <div id="players-list" class="players-table">
+                <!-- Dynamic content will be injected here -->
+            </div>
+        </div>
+        <div id="connection-status">Connecting...</div>
+
+        <script>
+            const teamColors = {
+                '0': 'red',
+                '1': 'blue',
+                '2': 'yellow',
+                '3': 'green',
+                '4': 'purple',
+                '5': 'orange',
+                '6': 'brown',
+                '7': 'pink',
+                '8': 'default'
+            };
+
+            // Get team from URL parameter (default to 0 = Red)
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetTeam = parseInt(urlParams.get('team')) || 0;
+
+            const client = new websocket_client();
+            let updateInterval;
+
+            async function init() {
+                const wsUrl = `ws://${window.config.host}:${window.config.port}`;
+
+                try {
+                    await client.connect(wsUrl);
+                    document.getElementById('connection-status').textContent = 'Connected';
+
+                    client.add_message_recieved_callback('get_team_scoreboard', handleTeamScoreboard);
+                    client.add_message_recieved_callback('close', handleDisconnect);
+
+                    // Initial request
+                    client.request_team_scoreboard(targetTeam);
+
+                    // Poll every 500ms
+                    updateInterval = setInterval(() => {
+                        client.request_team_scoreboard(targetTeam);
+                    }, 500);
+
+                } catch (error) {
+                    document.getElementById('connection-status').textContent = 'Connection failed';
+                    console.error('Failed to connect:', error);
+                    // Retry connection after 3 seconds
+                    setTimeout(init, 3000);
+                }
+            }
+
+            function handleDisconnect() {
+                document.getElementById('connection-status').textContent = 'Disconnected - Reconnecting...';
+                if (updateInterval) clearInterval(updateInterval);
+                setTimeout(init, 3000);
+            }
+
+            function handleTeamScoreboard(response) {
+                const container = document.getElementById('scoreboard-container');
+                const playersList = document.getElementById('players-list');
+
+                const teamIndex = response.team_index.toString();
+                const colorClass = 'team-' + (teamColors[teamIndex] || 'default');
+
+                // Remove old team class and add new one
+                container.className = colorClass;
+
+                // Update header
+                const header = container.querySelector('.team-header');
+                header.querySelector('.team-name-header').textContent = response.team_name || 'Team ' + teamIndex;
+                header.querySelector('.team-score-header').textContent = response.team_score;
+                header.querySelector('.game-type-label').textContent = response.game_type_display || response.game_type || '';
+
+                // Update players list
+                const players = response.players || [];
+
+                if (players.length === 0) {
+                    playersList.innerHTML = '<div class="no-players">No players on this team</div>';
+                    return;
+                }
+
+                let html = '';
+                players.forEach(player => {
+                    const deadClass = player.is_dead ? 'dead' : '';
+                    const respawnText = player.is_dead && player.respawn_timer > 0
+                        ? `<span class="respawn-timer">(${player.respawn_timer}s)</span>`
+                        : '';
+
+                    html += `
+                        <div class="player-row ${deadClass}">
+                            <span class="player-name">${player.name}${respawnText}</span>
+                            <span class="player-weapon">${player.current_weapon || 'None'}</span>
+                            <div class="player-stats">
+                                <div class="stat stat-kills">
+                                    <span class="stat-value">${player.kills}</span>
+                                    <span class="stat-label">K</span>
+                                </div>
+                                <div class="stat stat-deaths">
+                                    <span class="stat-value">${player.deaths}</span>
+                                    <span class="stat-label">D</span>
+                                </div>
+                                <div class="stat stat-assists">
+                                    <span class="stat-value">${player.assists}</span>
+                                    <span class="stat-label">A</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                playersList.innerHTML = html;
+            }
+
+            // Start
+            init();
+        </script>
+    </body>
+</html>
