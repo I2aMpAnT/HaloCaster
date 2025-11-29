@@ -63,7 +63,7 @@ namespace xemuh2stats
 
             try
             {
-                string url = $"https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
+                string url = $"https://carnagereport.com/emblem?P={primaryColor}&S={secondaryColor}&EP={tertiaryColor}&ES={quaternaryColor}&EF={emblemForeground}&EB={emblemBackground}&ET=0";
 
                 using (WebClient client = new WebClient())
                 {
