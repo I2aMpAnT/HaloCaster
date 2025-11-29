@@ -131,6 +131,20 @@
                 text-align: right;
             }
 
+            .objective-icon {
+                width: 16px;
+                height: 16px;
+                margin-right: 2px;
+                filter: brightness(0) invert(1);
+                vertical-align: middle;
+            }
+
+            .objective-stat {
+                display: flex;
+                align-items: center;
+                margin-right: 4px;
+            }
+
             #connection-status {
                 display: none;
             }
@@ -258,23 +272,30 @@
                 return `Weapons/${cleanName}.png`;
             }
 
+            // Format seconds to M:SS
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
             // Get objective score based on game type
             function getObjectiveScore(player, gameType) {
                 if (!gameType) return null;
                 const gt = gameType.toLowerCase();
 
                 if (gt.includes('ctf') || gt.includes('capture')) {
-                    return { label: 'C', value: player.ctf_scores || 0 };
+                    return { icon: 'Weapons/Flag.png', value: player.ctf_scores || 0, isTime: false };
                 } else if (gt.includes('assault') || gt.includes('bomb')) {
-                    return { label: 'B', value: player.assault_score || 0 };
+                    return { icon: 'Weapons/AssaultBomb.png', value: player.assault_score || 0, isTime: false };
                 } else if (gt.includes('oddball') || gt.includes('ball')) {
-                    return { label: 'T', value: Math.floor(player.oddball_score || 0) };
+                    return { icon: 'Weapons/OddBall.png', value: player.oddball_score || 0, isTime: true };
                 } else if (gt.includes('king') || gt.includes('koth')) {
-                    return { label: 'T', value: player.koth_time || 0 };
+                    return { icon: 'Weapons/OddBall.png', value: player.koth_time || 0, isTime: true };
                 } else if (gt.includes('territories') || gt.includes('territory')) {
-                    return { label: 'T', value: player.territories_taken || 0 };
+                    return { icon: 'Weapons/Flag.png', value: player.territories_taken || 0, isTime: false };
                 } else if (gt.includes('juggernaut')) {
-                    return { label: 'T', value: player.juggernaut_time || 0 };
+                    return { icon: 'Weapons/OddBall.png', value: player.juggernaut_time || 0, isTime: true };
                 }
                 return null;
             }
@@ -312,9 +333,12 @@
 
                 // Add objective stat for non-slayer games
                 if (!isSlayer && objective) {
+                    const displayValue = objective.isTime ? formatTime(objective.value) : objective.value;
                     statsHtml = `
-                        <span class="stat-label">${objective.label}</span>
-                        <span class="stat-value">${objective.value}</span>
+                        <div class="objective-stat">
+                            <img src="${objective.icon}" class="objective-icon" alt="">
+                            <span class="stat-value">${displayValue}</span>
+                        </div>
                     ` + statsHtml;
                 }
 
