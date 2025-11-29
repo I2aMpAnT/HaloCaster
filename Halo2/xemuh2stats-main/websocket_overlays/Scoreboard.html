@@ -87,6 +87,23 @@
                 max-height: 22px;
             }
 
+            .player-emblem iframe {
+                width: 22px;
+                height: 22px;
+                border: none;
+                pointer-events: none;
+                transform: scale(0.0859375); /* 22/256 = 0.0859375 */
+                transform-origin: top left;
+                width: 256px;
+                height: 256px;
+            }
+
+            .emblem-iframe-container {
+                width: 22px;
+                height: 22px;
+                overflow: hidden;
+            }
+
             .dead-x {
                 color: #FF0000;
                 font-size: 18px;
@@ -315,9 +332,10 @@
                 if (isDead) {
                     emblemHtml = '<span class="dead-x">X</span>';
                 } else if (player.emblem_url) {
-                    emblemHtml = `<img src="${player.emblem_url}" alt="">`;
+                    // Use iframe to render emblem.html (canvas-based emblem)
+                    emblemHtml = `<div class="emblem-iframe-container"><iframe src="${player.emblem_url}" scrolling="no"></iframe></div>`;
                 } else {
-                    emblemHtml = '<span style="width:24px;height:24px;background:#444;border-radius:2px;"></span>';
+                    emblemHtml = '<span style="width:22px;height:22px;background:#444;border-radius:2px;display:inline-block;"></span>';
                 }
 
                 // Weapon icon
