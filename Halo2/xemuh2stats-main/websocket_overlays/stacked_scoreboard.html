@@ -216,20 +216,42 @@
             }
 
             function isObjectiveGame() {
-                return ['capture_the_flag', 'assault', 'oddball', 'king_of_the_hill', 'territories', 'juggernaut'].includes(currentGameType);
+                const gt = currentGameType.toLowerCase();
+                return gt.includes('ctf') || gt.includes('flag') || gt.includes('assault') ||
+                       gt.includes('oddball') || gt.includes('king') || gt.includes('hill') ||
+                       gt.includes('territories') || gt.includes('juggernaut') ||
+                       gt === 'capture_the_flag';
             }
 
             function getObjectiveScore(gameStats) {
                 if (!gameStats) return 0;
-                switch (currentGameType) {
-                    case 'capture_the_flag': return gameStats.ctf_scores || 0;
-                    case 'assault': return gameStats.assault_score || 0;
-                    case 'oddball': return gameStats.oddball_score || 0;
-                    case 'king_of_the_hill': return gameStats.koth_kills_as_king || 0;
-                    case 'territories': return gameStats.territories_taken || 0;
-                    case 'juggernaut': return gameStats.juggernaut_time || 0;
-                    default: return 0;
+                const gt = currentGameType.toLowerCase();
+
+                // CTF
+                if (gt.includes('ctf') || gt.includes('flag') || gt === 'capture_the_flag') {
+                    return gameStats.ctf_scores || gameStats.Ctf_scores || gameStats.CTF_scores || 0;
                 }
+                // Assault
+                if (gt.includes('assault')) {
+                    return gameStats.assault_score || gameStats.Assault_score || 0;
+                }
+                // Oddball
+                if (gt.includes('oddball')) {
+                    return gameStats.oddball_score || gameStats.Oddball_score || 0;
+                }
+                // KOTH
+                if (gt.includes('king') || gt.includes('hill')) {
+                    return gameStats.koth_kills_as_king || gameStats.Koth_kills_as_king || 0;
+                }
+                // Territories
+                if (gt.includes('territories')) {
+                    return gameStats.territories_taken || gameStats.Territories_taken || 0;
+                }
+                // Juggernaut
+                if (gt.includes('juggernaut')) {
+                    return gameStats.juggernaut_time || gameStats.Juggernaut_time || 0;
+                }
+                return 0;
             }
 
             function handlePlayers(playersData, type) {
