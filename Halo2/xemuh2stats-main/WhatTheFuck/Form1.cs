@@ -242,8 +242,12 @@ namespace xemuh2stats
                             post_game_.Add(post_game_report.get(i));
                         }
 
-                        xls_generator.dump_game_to_sheet($"{timestamp}", real_time_cache, post_game_, Program.variant_details_cache);
-                        xls_generator.dump_identity_to_sheet($"{timestamp}", real_time_cache.Count);
+                        string statsFilePath = xls_generator.dump_game_to_sheet($"{timestamp}", real_time_cache, post_game_, Program.variant_details_cache);
+                        string identityFilePath = xls_generator.dump_identity_to_sheet($"{timestamp}", real_time_cache.Count);
+
+                        // Upload stats via SFTP
+                        sftp_uploader.upload_stats(statsFilePath, identityFilePath);
+
                         dump_lock = true;
                     }
                 }

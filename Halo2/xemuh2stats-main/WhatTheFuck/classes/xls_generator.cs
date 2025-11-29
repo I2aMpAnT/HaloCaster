@@ -16,7 +16,7 @@ namespace xemuh2stats.classes
 {
     public static class xls_generator
     {
-        public static void dump_game_to_sheet(string filename, List<real_time_player_stats> real_time_player_stats, List<s_post_game_player> post_game_player_stats, s_variant_details variant_details)
+        public static string dump_game_to_sheet(string filename, List<real_time_player_stats> real_time_player_stats, List<s_post_game_player> post_game_player_stats, s_variant_details variant_details)
         {
             if (!Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}/stats/"))
                 Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}/stats/");
@@ -49,6 +49,8 @@ namespace xemuh2stats.classes
                 // Save the workbook.
                 workbookPart.Workbook.Save();
             }
+
+            return filePath;
         }
         static SheetData CreateSheet(WorkbookPart workbookPart, Sheets sheets, string sheetName, string[] headers)
         {
@@ -538,7 +540,7 @@ namespace xemuh2stats.classes
             "Emblem URL"
         };
 
-        public static void dump_identity_to_sheet(string filename, int playerCount)
+        public static string dump_identity_to_sheet(string filename, int playerCount)
         {
             if (!Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}/stats/"))
                 Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}/stats/");
@@ -610,6 +612,8 @@ namespace xemuh2stats.classes
 
                 workbookPart.Workbook.Save();
             }
+
+            return filePath;
         }
     }
 }

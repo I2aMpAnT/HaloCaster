@@ -34,6 +34,10 @@ namespace xemuh2stats
             //object_formatter.register_type("game_stats", typeof(s_game_stats));
             //object_formatter.register_type("medal_stats", typeof(s_medal_stats));
             //object_formatter.register_type("post_report", typeof(s_post_game_player));
+
+            // Initialize SFTP uploader with configuration
+            sftp_uploader.initialize(configurations);
+
             Application.Run(new Form1());
         }
     }
