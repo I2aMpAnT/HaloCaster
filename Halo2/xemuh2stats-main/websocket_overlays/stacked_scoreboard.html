@@ -38,13 +38,14 @@
                 font-weight: bold;
             }
 
-            .team-score-row.red {
-                background: rgba(180, 50, 50, 0.95);
-            }
-
-            .team-score-row.blue {
-                background: rgba(60, 90, 160, 0.95);
-            }
+            .team-score-row.red { background: rgba(180, 50, 50, 0.95); }
+            .team-score-row.blue { background: rgba(60, 90, 160, 0.95); }
+            .team-score-row.yellow { background: rgba(180, 180, 50, 0.95); }
+            .team-score-row.green { background: rgba(50, 160, 50, 0.95); }
+            .team-score-row.purple { background: rgba(130, 50, 160, 0.95); }
+            .team-score-row.orange { background: rgba(200, 120, 50, 0.95); }
+            .team-score-row.brown { background: rgba(120, 80, 50, 0.95); }
+            .team-score-row.pink { background: rgba(200, 100, 150, 0.95); }
 
             /* Gap between headers and players */
             .team-gap {
@@ -59,13 +60,14 @@
                 font-size: 14px;
             }
 
-            .player-row.red {
-                background: rgba(180, 50, 50, 0.9);
-            }
-
-            .player-row.blue {
-                background: rgba(60, 90, 160, 0.9);
-            }
+            .player-row.red { background: rgba(180, 50, 50, 0.9); }
+            .player-row.blue { background: rgba(60, 90, 160, 0.9); }
+            .player-row.yellow { background: rgba(180, 180, 50, 0.9); }
+            .player-row.green { background: rgba(50, 160, 50, 0.9); }
+            .player-row.purple { background: rgba(130, 50, 160, 0.9); }
+            .player-row.orange { background: rgba(200, 120, 50, 0.9); }
+            .player-row.brown { background: rgba(120, 80, 50, 0.9); }
+            .player-row.pink { background: rgba(200, 100, 150, 0.9); }
 
             .player-emblem {
                 width: 26px;
@@ -93,7 +95,7 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                min-width: 100px;
+                min-width: 80px;
             }
 
             .player-weapon {
@@ -102,7 +104,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                margin: 0 8px;
+                margin: 0 4px;
             }
 
             .player-weapon img {
@@ -113,8 +115,8 @@
             .player-stats {
                 display: flex;
                 align-items: center;
-                gap: 4px;
-                font-size: 13px;
+                gap: 2px;
+                font-size: 12px;
             }
 
             .stat-label {
@@ -123,14 +125,14 @@
             }
 
             .stat-value {
-                min-width: 18px;
+                min-width: 14px;
                 text-align: right;
             }
 
             .stat-group {
                 display: flex;
                 align-items: center;
-                margin-left: 6px;
+                margin-left: 4px;
             }
 
             #connection-status {
@@ -140,27 +142,18 @@
                 font-size: 10px;
                 color: #888;
             }
+
+            #team-headers {
+                display: flex;
+                flex-direction: column;
+            }
         </style>
     </head>
     <body>
         <div id="scoreboard-container">
-            <!-- Team Score Headers -->
-            <div class="team-score-row red">
-                <span>Red Team</span>
-                <span id="red-score">0</span>
-            </div>
-            <div class="team-score-row blue">
-                <span>Blue Team</span>
-                <span id="blue-score">0</span>
-            </div>
-
+            <div id="team-headers"></div>
             <div class="team-gap"></div>
-
-            <!-- Red Team Players -->
-            <div id="red-players"></div>
-
-            <!-- Blue Team Players -->
-            <div id="blue-players"></div>
+            <div id="players-container"></div>
         </div>
         <div id="connection-status">Connecting...</div>
 
@@ -168,9 +161,18 @@
             const client = new websocket_client();
             let updateInterval;
 
-            let lastRedPlayers = [];
-            let lastBluePlayers = [];
+            let fullData = {};
+            let scoreboardData = {};
             let currentGameType = 'slayer';
+
+            const teamNames = {
+                0: 'Red Team', 1: 'Blue Team', 2: 'Yellow Team', 3: 'Green Team',
+                4: 'Purple Team', 5: 'Orange Team', 6: 'Brown Team', 7: 'Pink Team'
+            };
+            const teamClasses = {
+                0: 'red', 1: 'blue', 2: 'yellow', 3: 'green',
+                4: 'purple', 5: 'orange', 6: 'brown', 7: 'pink'
+            };
 
             async function init() {
                 const wsUrl = `ws://${window.config.host}:${window.config.port}`;
@@ -195,6 +197,7 @@
 
             function requestData() {
                 client.request_players("full");
+                client.request_players("scoreboard");
                 client.request_variant_details();
             }
 
@@ -229,23 +232,35 @@
                 }
             }
 
-            function handlePlayers(playersData) {
-                let redPlayers = [];
-                let bluePlayers = [];
-                let redScore = 0;
-                let blueScore = 0;
+            function handlePlayers(playersData, type) {
+                // Detect type based on data structure
+                const firstPlayer = playersData[Object.keys(playersData)[0]];
+                if (firstPlayer && firstPlayer.game_stats !== undefined) {
+                    fullData = playersData;
+                } else {
+                    scoreboardData = playersData;
+                }
 
-                const playerNames = Object.keys(playersData);
+                renderScoreboard();
+            }
+
+            function renderScoreboard() {
+                const teams = {};
                 const isObj = isObjectiveGame();
 
-                playerNames.forEach(playerName => {
-                    const p = playersData[playerName];
-
-                    // Full type returns nested game_stats and player objects
+                // Process full data for stats
+                Object.keys(fullData).forEach(playerName => {
+                    const p = fullData[playerName];
                     const stats = p.game_stats || {};
                     const playerInfo = p.player || {};
                     const profile = playerInfo.profile_traits?.profile || {};
                     const emblemInfo = profile.emblem_info || {};
+
+                    const teamIndex = playerInfo.team_index;
+                    if (teamIndex === undefined) return;
+
+                    // Get scoreboard data for this player (weapon, is_dead)
+                    const sb = scoreboardData[playerName] || {};
 
                     const kills = stats.kills || 0;
                     const deaths = stats.deaths || 0;
@@ -259,8 +274,8 @@
                         assists: assists,
                         obj_score: objScore,
                         score: isObj ? objScore : kills,
-                        is_dead: false, // Will check from game state if needed
-                        current_weapon: 'None',
+                        is_dead: sb.is_dead === 'True' || sb.is_dead === true,
+                        current_weapon: sb.current_weapon || 'None',
                         emblem_foreground: emblemInfo.foreground_emblem,
                         emblem_background: emblemInfo.background_emblem,
                         primary_color: profile.primary_color,
@@ -269,62 +284,63 @@
                         quaternary_color: profile.quaternary_color
                     };
 
-                    // Get team index (0 = red, 1 = blue)
-                    const teamIndex = playerInfo.team_index;
-                    if (teamIndex === 0 || teamIndex === 'red') {
-                        redPlayers.push(playerData);
-                        redScore += playerData.score;
-                    } else if (teamIndex === 1 || teamIndex === 'blue') {
-                        bluePlayers.push(playerData);
-                        blueScore += playerData.score;
+                    if (!teams[teamIndex]) {
+                        teams[teamIndex] = { players: [], totalScore: 0 };
                     }
+                    teams[teamIndex].players.push(playerData);
+                    teams[teamIndex].totalScore += playerData.score;
                 });
 
-                // Sort by score descending
-                redPlayers.sort((a, b) => b.score - a.score);
-                bluePlayers.sort((a, b) => b.score - a.score);
+                // Sort teams by index
+                const sortedTeamIndices = Object.keys(teams).map(Number).sort((a, b) => a - b);
 
-                document.getElementById('red-score').textContent = redScore;
-                document.getElementById('blue-score').textContent = blueScore;
-
-                if (redPlayers.length > 0) lastRedPlayers = redPlayers;
-                if (bluePlayers.length > 0) lastBluePlayers = bluePlayers;
-
-                renderTeamPlayers('red-players', redPlayers.length > 0 ? redPlayers : lastRedPlayers, 'red');
-                renderTeamPlayers('blue-players', bluePlayers.length > 0 ? bluePlayers : lastBluePlayers, 'blue');
-            }
-
-            function renderTeamPlayers(containerId, players, teamClass) {
-                const container = document.getElementById(containerId);
-                if (!players || players.length === 0) return;
-
-                const isObj = isObjectiveGame();
-                let html = '';
-
-                players.forEach(player => {
-                    const emblemUrl = getEmblemUrl(player);
-                    const weaponImg = getWeaponImage(player.current_weapon);
-
-                    const emblemContent = player.is_dead
-                        ? '<span class="dead-x">X</span>'
-                        : `<img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">`;
-
-                    html += `
-                        <div class="player-row ${teamClass}">
-                            <div class="player-emblem">${emblemContent}</div>
-                            <span class="player-name">${player.name}</span>
-                            <div class="player-weapon">${weaponImg}</div>
-                            <div class="player-stats">
-                                ${isObj ? `<span class="stat-group"><span class="stat-label">Score</span><span class="stat-value">${player.obj_score}</span></span>` : ''}
-                                <span class="stat-group"><span class="stat-label">K</span><span class="stat-value">${player.kills}</span></span>
-                                <span class="stat-group"><span class="stat-label">D</span><span class="stat-value">${player.deaths}</span></span>
-                                <span class="stat-group"><span class="stat-label">A</span><span class="stat-value">${player.assists}</span></span>
-                            </div>
+                // Render team headers
+                let headersHtml = '';
+                sortedTeamIndices.forEach(teamIndex => {
+                    const teamClass = teamClasses[teamIndex] || 'red';
+                    const teamName = teamNames[teamIndex] || 'Team ' + teamIndex;
+                    headersHtml += `
+                        <div class="team-score-row ${teamClass}">
+                            <span>${teamName}</span>
+                            <span>${teams[teamIndex].totalScore}</span>
                         </div>
                     `;
                 });
+                document.getElementById('team-headers').innerHTML = headersHtml;
 
-                container.innerHTML = html;
+                // Render players by team
+                let playersHtml = '';
+                sortedTeamIndices.forEach(teamIndex => {
+                    const teamClass = teamClasses[teamIndex] || 'red';
+                    const teamPlayers = teams[teamIndex].players;
+
+                    // Sort by score descending
+                    teamPlayers.sort((a, b) => b.score - a.score);
+
+                    teamPlayers.forEach(player => {
+                        const emblemUrl = getEmblemUrl(player);
+                        const weaponImg = getWeaponImage(player.current_weapon);
+
+                        const emblemContent = player.is_dead
+                            ? '<span class="dead-x">X</span>'
+                            : `<img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">`;
+
+                        playersHtml += `
+                            <div class="player-row ${teamClass}">
+                                <div class="player-emblem">${emblemContent}</div>
+                                <span class="player-name">${player.name}</span>
+                                <div class="player-weapon">${weaponImg}</div>
+                                <div class="player-stats">
+                                    ${isObj ? `<span class="stat-group"><span class="stat-label">S</span><span class="stat-value">${player.obj_score}</span></span>` : ''}
+                                    <span class="stat-group"><span class="stat-label">K</span><span class="stat-value">${player.kills}</span></span>
+                                    <span class="stat-group"><span class="stat-label">D</span><span class="stat-value">${player.deaths}</span></span>
+                                    <span class="stat-group"><span class="stat-label">A</span><span class="stat-value">${player.assists}</span></span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                });
+                document.getElementById('players-container').innerHTML = playersHtml;
             }
 
             function getEmblemUrl(player) {
