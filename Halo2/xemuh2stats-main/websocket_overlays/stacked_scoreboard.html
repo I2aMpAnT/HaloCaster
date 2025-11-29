@@ -24,7 +24,7 @@
             }
 
             #scoreboard-container {
-                width: 320px;
+                width: 380px;
                 background: rgba(0, 0, 0, 0.75);
             }
 
@@ -72,7 +72,6 @@
             .player-emblem {
                 width: 24px;
                 height: 24px;
-                position: relative;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -85,15 +84,10 @@
             }
 
             .dead-x {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: 24px;
+                font-size: 22px;
                 color: #ff0000;
                 font-weight: bold;
                 text-shadow: 1px 1px 1px black, -1px -1px 1px black;
-                pointer-events: none;
                 line-height: 1;
             }
 
@@ -121,12 +115,24 @@
                 margin-left: 6px;
             }
 
-            .player-kills {
-                width: 30px;
-                text-align: right;
+            .player-stats {
+                display: flex;
+                gap: 2px;
+                margin-left: 8px;
+            }
+
+            .player-stat {
+                width: 24px;
+                text-align: center;
                 font-weight: bold;
                 text-shadow: 1px 1px 2px black;
+                font-size: 13px;
             }
+
+            .stat-k { color: #88ff88; }
+            .stat-d { color: #ff8888; }
+            .stat-a { color: #88aaff; }
+            .stat-obj { color: #ffff66; }
 
             #connection-status {
                 position: fixed;
@@ -165,6 +171,7 @@
             // Store last known players to persist display
             let lastRedPlayers = [];
             let lastBluePlayers = [];
+            let currentGameType = 'slayer';
 
             async function init() {
                 const wsUrl = `ws://${window.config.host}:${window.config.port}`;
@@ -174,11 +181,12 @@
                     document.getElementById('connection-status').textContent = '';
 
                     client.add_message_recieved_callback('get_players', handlePlayers);
+                    client.add_message_recieved_callback('get_variant_details', handleVariantDetails);
                     client.add_message_recieved_callback('error', handleError);
                     client.add_message_recieved_callback('close', handleDisconnect);
 
-                    requestScoreboard();
-                    updateInterval = setInterval(requestScoreboard, 500);
+                    requestData();
+                    updateInterval = setInterval(requestData, 500);
 
                 } catch (error) {
                     document.getElementById('connection-status').textContent = 'Connection failed';
@@ -186,8 +194,9 @@
                 }
             }
 
-            function requestScoreboard() {
-                client.request_players("scoreboard");
+            function requestData() {
+                client.request_players("full");
+                client.request_variant_details();
             }
 
             function handleDisconnect() {
@@ -200,6 +209,37 @@
                 // Keep existing display on error
             }
 
+            function handleVariantDetails(details) {
+                if (details && details.game_type) {
+                    currentGameType = details.game_type.toLowerCase();
+                }
+            }
+
+            function isObjectiveGame() {
+                return ['capture_the_flag', 'assault', 'oddball', 'king_of_the_hill', 'territories', 'juggernaut'].includes(currentGameType);
+            }
+
+            function getObjectiveScore(player) {
+                if (!player.game_stats) return 0;
+                const stats = player.game_stats;
+                switch (currentGameType) {
+                    case 'capture_the_flag':
+                        return stats.ctf_scores || 0;
+                    case 'assault':
+                        return stats.assault_score || 0;
+                    case 'oddball':
+                        return stats.oddball_score || 0;
+                    case 'king_of_the_hill':
+                        return stats.koth_kills_as_king || 0;
+                    case 'territories':
+                        return stats.territories_taken || 0;
+                    case 'juggernaut':
+                        return stats.juggernaut_time || 0;
+                    default:
+                        return 0;
+                }
+            }
+
             function handlePlayers(playersData) {
                 let redPlayers = [];
                 let bluePlayers = [];
@@ -207,34 +247,49 @@
                 let blueScore = 0;
 
                 const playerNames = Object.keys(playersData);
+                const isObj = isObjectiveGame();
 
                 playerNames.forEach(playerName => {
                     const player = playersData[playerName];
+                    const kills = player.game_stats ? player.game_stats.kills : 0;
+                    const deaths = player.game_stats ? player.game_stats.deaths : 0;
+                    const assists = player.game_stats ? player.game_stats.assists : 0;
+                    const objScore = getObjectiveScore(player);
+
                     const playerData = {
                         name: playerName,
-                        kills: parseInt(player.kills) || 0,
-                        is_dead: player.is_dead === 'True' || player.is_dead === true,
-                        current_weapon: player.current_weapon || 'None',
-                        emblem_foreground: player.emblem_foreground,
-                        emblem_background: player.emblem_background,
-                        primary_color: player.primary_color,
-                        secondary_color: player.secondary_color,
-                        tertiary_color: player.tertiary_color,
-                        quaternary_color: player.quaternary_color
+                        kills: kills,
+                        deaths: deaths,
+                        assists: assists,
+                        obj_score: objScore,
+                        is_dead: player.player && player.player.respawn_time !== 0,
+                        current_weapon: 'None',
+                        emblem_foreground: player.player?.profile_traits?.profile?.emblem_info?.foreground_emblem,
+                        emblem_background: player.player?.profile_traits?.profile?.emblem_info?.background_emblem,
+                        primary_color: player.player?.profile_traits?.profile?.primary_color,
+                        secondary_color: player.player?.profile_traits?.profile?.secondary_color,
+                        tertiary_color: player.player?.profile_traits?.profile?.tertiary_color,
+                        quaternary_color: player.player?.profile_traits?.profile?.quaternary_color
                     };
 
-                    if (player.team && player.team.includes('red')) {
+                    // Get team from player properties
+                    const teamIndex = player.player?.team_index;
+                    const isRed = teamIndex === 0 || (typeof teamIndex === 'string' && teamIndex.includes('red'));
+                    const isBlue = teamIndex === 1 || (typeof teamIndex === 'string' && teamIndex.includes('blue'));
+
+                    if (isRed) {
                         redPlayers.push(playerData);
-                        redScore += playerData.kills;
-                    } else if (player.team && player.team.includes('blue')) {
+                        redScore += isObj ? objScore : kills;
+                    } else if (isBlue) {
                         bluePlayers.push(playerData);
-                        blueScore += playerData.kills;
+                        blueScore += isObj ? objScore : kills;
                     }
                 });
 
-                // Sort by kills descending
-                redPlayers.sort((a, b) => b.kills - a.kills);
-                bluePlayers.sort((a, b) => b.kills - a.kills);
+                // Sort by objective score for obj games, kills for slayer
+                const sortKey = isObj ? 'obj_score' : 'kills';
+                redPlayers.sort((a, b) => b[sortKey] - a[sortKey]);
+                bluePlayers.sort((a, b) => b[sortKey] - a[sortKey]);
 
                 // Update scores
                 document.getElementById('red-score').textContent = redScore;
@@ -259,20 +314,30 @@
                     return;
                 }
 
+                const isObj = isObjectiveGame();
                 let html = '';
                 players.forEach(player => {
                     const emblemUrl = getEmblemUrl(player);
                     const weaponImg = getWeaponImage(player.current_weapon);
 
+                    // Show red X instead of emblem when dead
+                    const emblemContent = player.is_dead
+                        ? '<span class="dead-x">X</span>'
+                        : `<img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">`;
+
                     html += `
                         <div class="player-row">
                             <div class="player-emblem">
-                                <img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">
-                                ${player.is_dead ? '<span class="dead-x">X</span>' : ''}
+                                ${emblemContent}
                             </div>
                             <div class="player-weapon">${weaponImg}</div>
                             <span class="player-name">${player.name}</span>
-                            <span class="player-kills">${player.kills}</span>
+                            <div class="player-stats">
+                                ${isObj ? `<span class="player-stat stat-obj">${player.obj_score}</span>` : ''}
+                                <span class="player-stat stat-k">${player.kills}</span>
+                                <span class="player-stat stat-d">${player.deaths}</span>
+                                <span class="player-stat stat-a">${player.assists}</span>
+                            </div>
                         </div>
                     `;
                 });
