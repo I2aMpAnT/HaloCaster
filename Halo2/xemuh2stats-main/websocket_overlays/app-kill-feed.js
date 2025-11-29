@@ -132,6 +132,7 @@ function fadeOutAndRemove(element, duration, delay) {
 
 // Handle score events (flag captures, bomb arms)
 client.add_message_recieved_callback('score_event_push', (scoreData) => {
+    console.log('Score event received:', scoreData);
     const player = scoreData.player;
     const playerTeam = scoreData.player_team || '';
     const eventType = scoreData.event_type;
