@@ -24,7 +24,7 @@
             }
 
             #scoreboard-container {
-                width: 280px;
+                width: 320px;
                 background: rgba(0, 0, 0, 0.75);
             }
 
@@ -33,7 +33,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 6px 12px;
+                padding: 4px 12px;
                 font-size: 18px;
                 font-weight: bold;
             }
@@ -61,32 +61,27 @@
                 margin: 0;
             }
 
-            .team-divider.blue {
-                background: #3366cc;
-            }
-
             /* Player Row */
             .player-row {
                 display: flex;
                 align-items: center;
-                padding: 3px 8px;
+                padding: 2px 8px;
                 font-size: 14px;
             }
 
             .player-emblem {
-                width: 28px;
-                height: 28px;
+                width: 24px;
+                height: 24px;
                 position: relative;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                margin-right: 8px;
                 background: rgba(0,0,0,0.3);
             }
 
             .player-emblem img {
-                width: 24px;
-                height: 24px;
+                width: 22px;
+                height: 22px;
             }
 
             .dead-x {
@@ -94,12 +89,27 @@
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                font-size: 28px;
+                font-size: 24px;
                 color: #ff0000;
                 font-weight: bold;
                 text-shadow: 1px 1px 1px black, -1px -1px 1px black;
                 pointer-events: none;
                 line-height: 1;
+            }
+
+            .player-weapon {
+                width: 32px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: 4px;
+            }
+
+            .player-weapon img {
+                max-width: 28px;
+                max-height: 16px;
+                filter: brightness(1.1);
             }
 
             .player-name {
@@ -108,6 +118,7 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 text-shadow: 1px 1px 2px black;
+                margin-left: 6px;
             }
 
             .player-kills {
@@ -162,12 +173,12 @@
                     await client.connect(wsUrl);
                     document.getElementById('connection-status').textContent = '';
 
-                    client.add_message_recieved_callback('get_team_scoreboard', handleTeamScoreboard);
+                    client.add_message_recieved_callback('get_players', handlePlayers);
                     client.add_message_recieved_callback('error', handleError);
                     client.add_message_recieved_callback('close', handleDisconnect);
 
-                    requestBothTeams();
-                    updateInterval = setInterval(requestBothTeams, 500);
+                    requestScoreboard();
+                    updateInterval = setInterval(requestScoreboard, 500);
 
                 } catch (error) {
                     document.getElementById('connection-status').textContent = 'Connection failed';
@@ -175,67 +186,83 @@
                 }
             }
 
-            function requestBothTeams() {
-                client.request_team_scoreboard(0);
-                client.request_team_scoreboard(1);
+            function requestScoreboard() {
+                client.request_players("scoreboard");
             }
 
             function handleDisconnect() {
                 document.getElementById('connection-status').textContent = 'Reconnecting...';
                 if (updateInterval) clearInterval(updateInterval);
-                // Reset scores to 0 but keep player names
-                document.getElementById('red-score').textContent = '0';
-                document.getElementById('blue-score').textContent = '0';
-                resetPlayersToZero();
                 setTimeout(init, 3000);
             }
 
             function handleError(error) {
-                // On error (like returning to lobby), reset scores but keep structure
-                document.getElementById('red-score').textContent = '0';
-                document.getElementById('blue-score').textContent = '0';
-                resetPlayersToZero();
+                // Keep existing display on error
             }
 
-            function resetPlayersToZero() {
-                // Reset last known players to show 0 kills
-                if (lastRedPlayers.length > 0) {
-                    renderTeamPlayers('red-players', lastRedPlayers.map(p => ({...p, kills: 0, is_dead: false})));
-                }
-                if (lastBluePlayers.length > 0) {
-                    renderTeamPlayers('blue-players', lastBluePlayers.map(p => ({...p, kills: 0, is_dead: false})));
-                }
-            }
+            function handlePlayers(playersData) {
+                let redPlayers = [];
+                let bluePlayers = [];
+                let redScore = 0;
+                let blueScore = 0;
 
-            function handleTeamScoreboard(response) {
-                const teamIndex = response.team_index;
+                const playerNames = Object.keys(playersData);
 
-                if (teamIndex === 0) {
-                    document.getElementById('red-score').textContent = response.team_score;
-                    if (response.players && response.players.length > 0) {
-                        lastRedPlayers = response.players;
+                playerNames.forEach(playerName => {
+                    const player = playersData[playerName];
+                    const playerData = {
+                        name: playerName,
+                        kills: parseInt(player.kills) || 0,
+                        is_dead: player.is_dead === 'True' || player.is_dead === true,
+                        current_weapon: player.current_weapon || 'None',
+                        emblem_foreground: player.emblem_foreground,
+                        emblem_background: player.emblem_background,
+                        primary_color: player.primary_color,
+                        secondary_color: player.secondary_color,
+                        tertiary_color: player.tertiary_color,
+                        quaternary_color: player.quaternary_color
+                    };
+
+                    if (player.team && player.team.includes('red')) {
+                        redPlayers.push(playerData);
+                        redScore += playerData.kills;
+                    } else if (player.team && player.team.includes('blue')) {
+                        bluePlayers.push(playerData);
+                        blueScore += playerData.kills;
                     }
-                    renderTeamPlayers('red-players', response.players || lastRedPlayers);
-                } else if (teamIndex === 1) {
-                    document.getElementById('blue-score').textContent = response.team_score;
-                    if (response.players && response.players.length > 0) {
-                        lastBluePlayers = response.players;
-                    }
-                    renderTeamPlayers('blue-players', response.players || lastBluePlayers);
+                });
+
+                // Sort by kills descending
+                redPlayers.sort((a, b) => b.kills - a.kills);
+                bluePlayers.sort((a, b) => b.kills - a.kills);
+
+                // Update scores
+                document.getElementById('red-score').textContent = redScore;
+                document.getElementById('blue-score').textContent = blueScore;
+
+                // Update players
+                if (redPlayers.length > 0) {
+                    lastRedPlayers = redPlayers;
                 }
+                if (bluePlayers.length > 0) {
+                    lastBluePlayers = bluePlayers;
+                }
+
+                renderTeamPlayers('red-players', redPlayers.length > 0 ? redPlayers : lastRedPlayers);
+                renderTeamPlayers('blue-players', bluePlayers.length > 0 ? bluePlayers : lastBluePlayers);
             }
 
             function renderTeamPlayers(containerId, players) {
                 const container = document.getElementById(containerId);
 
                 if (!players || players.length === 0) {
-                    // Don't clear - keep existing content
                     return;
                 }
 
                 let html = '';
                 players.forEach(player => {
                     const emblemUrl = getEmblemUrl(player);
+                    const weaponImg = getWeaponImage(player.current_weapon);
 
                     html += `
                         <div class="player-row">
@@ -243,6 +270,7 @@
                                 <img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">
                                 ${player.is_dead ? '<span class="dead-x">X</span>' : ''}
                             </div>
+                            <div class="player-weapon">${weaponImg}</div>
                             <span class="player-name">${player.name}</span>
                             <span class="player-kills">${player.kills}</span>
                         </div>
@@ -255,6 +283,12 @@
             function getEmblemUrl(player) {
                 if (player.emblem_foreground === undefined) return '';
                 return `https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
+            }
+
+            function getWeaponImage(weaponName) {
+                if (!weaponName || weaponName === 'None') return '';
+                const weaponFile = weaponName.replace(/\s+/g, '');
+                return `<img src="Weapons/${weaponFile}.png" alt="" onerror="this.style.display='none'">`;
             }
 
             init();
