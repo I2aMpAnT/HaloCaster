@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Renci.SshNet;
 using WhatTheFuck.classes;
@@ -17,8 +18,10 @@ namespace xemuh2stats.classes
         private const string KEY_PASSWORD = "password";
         private const string KEY_PUBLIC_PATH = "public_path";
         private const string KEY_PRIVATE_PATH = "private_path";
+        private const string KEY_WEBHOOK_URL = "webhook_url";
 
         private static configuration_collection _configs;
+        private static readonly HttpClient _httpClient = new HttpClient();
 
         public static void initialize(configuration_collection configs)
         {
@@ -35,6 +38,7 @@ namespace xemuh2stats.classes
                 config.set(KEY_PASSWORD, "");
                 config.set(KEY_PUBLIC_PATH, "/home/carnagereport/stats/public");
                 config.set(KEY_PRIVATE_PATH, "/home/carnagereport/stats/private");
+                config.set(KEY_WEBHOOK_URL, "");
                 config.save();
             }
         }
@@ -67,6 +71,7 @@ namespace xemuh2stats.classes
             string password = config.get(KEY_PASSWORD, "");
             string publicPath = config.get(KEY_PUBLIC_PATH, "/home/carnagereport/stats/public");
             string privatePath = config.get(KEY_PRIVATE_PATH, "/home/carnagereport/stats/private");
+            string webhookUrl = config.get(KEY_WEBHOOK_URL, "");
 
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(username))
             {
@@ -75,7 +80,7 @@ namespace xemuh2stats.classes
             }
 
             // Run upload in background to not block UI
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
@@ -109,12 +114,38 @@ namespace xemuh2stats.classes
                         client.Disconnect();
                         Console.WriteLine("SFTP upload complete");
                     }
+
+                    // Send webhook notification after successful upload
+                    if (!string.IsNullOrWhiteSpace(webhookUrl))
+                    {
+                        await send_webhook(webhookUrl);
+                    }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"SFTP upload error: {ex.Message}");
                 }
             });
+        }
+
+        private static async Task send_webhook(string webhookUrl)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync(webhookUrl, null);
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Webhook sent successfully to: {webhookUrl}");
+                }
+                else
+                {
+                    Console.WriteLine($"Webhook failed with status: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Webhook error: {ex.Message}");
+            }
         }
     }
 }
