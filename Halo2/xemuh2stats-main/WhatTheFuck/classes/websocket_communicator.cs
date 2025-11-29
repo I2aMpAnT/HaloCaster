@@ -73,6 +73,89 @@ namespace WhatTheFuck.classes
                 new websocket_response<s_variant_details>("get_variant_details", "", Program.variant_details_cache));
         }
 
+        public static string websocket_message_get_team_scores(Dictionary<string, string> arguments)
+        {
+            int player_count = Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+            var gameType = Program.variant_details_cache.game_type;
+
+            // Dictionary to hold team scores: key = team index, value = score
+            Dictionary<string, Dictionary<string, object>> teamScores = new Dictionary<string, Dictionary<string, object>>();
+
+            // Initialize team scores
+            for (int teamIndex = 0; teamIndex <= 8; teamIndex++)
+            {
+                teamScores[teamIndex.ToString()] = new Dictionary<string, object>
+                {
+                    { "score", 0 },
+                    { "team_name", ((e_game_team)teamIndex).GetDisplayName() }
+                };
+            }
+
+            // Sum up scores by team based on game type
+            for (int i = 0; i < player_count; i++)
+            {
+                real_time_player_stats player = real_time_player_stats.get(i);
+                string teamKey = ((int)player.player.team_index).ToString();
+
+                if (!teamScores.ContainsKey(teamKey))
+                    continue;
+
+                int currentScore = (int)teamScores[teamKey]["score"];
+
+                switch (gameType)
+                {
+                    case game_type.slayer:
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.kills;
+                        break;
+                    case game_type.capture_the_flag:
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.ctf_scores;
+                        break;
+                    case game_type.assault:
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.assault_score;
+                        break;
+                    case game_type.oddball:
+                        teamScores[teamKey]["score"] = currentScore + (int)player.game_stats.oddball_score;
+                        break;
+                    case game_type.king_of_the_hill:
+                        // KOTH doesn't have a direct team time stat, use kills as king
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.koth_kills_as_king;
+                        break;
+                    case game_type.territories:
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.territories_taken;
+                        break;
+                    case game_type.juggernaut:
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.juggernaut_time;
+                        break;
+                    default:
+                        // Default to kills
+                        teamScores[teamKey]["score"] = currentScore + player.game_stats.kills;
+                        break;
+                }
+            }
+
+            // Filter out teams with no players (score still 0 and no one on team)
+            var activeTeams = new Dictionary<string, Dictionary<string, object>>();
+            for (int i = 0; i < player_count; i++)
+            {
+                real_time_player_stats player = real_time_player_stats.get(i);
+                string teamKey = ((int)player.player.team_index).ToString();
+                if (teamScores.ContainsKey(teamKey) && !activeTeams.ContainsKey(teamKey))
+                {
+                    activeTeams[teamKey] = teamScores[teamKey];
+                }
+            }
+
+            // Add game type info to response
+            var response = new Dictionary<string, object>
+            {
+                { "game_type", gameType.ToString() },
+                { "game_type_display", gameType.GetDisplayName() },
+                { "teams", activeTeams }
+            };
+
+            return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, object>>("get_team_scores", "", response));
+        }
+
         public static string websocket_message_get_netgame_items(Dictionary<string, string> arguments)
         {
             var result = net_game_equipment.get_useful_net_game_items();
@@ -391,6 +474,9 @@ namespace WhatTheFuck.classes
                         break;
                     case "get_variant_details":
                         _server.SendMessage(client, websocket_message_handlers.websocket_message_get_variant_details(message.arguments));
+                        break;
+                    case "get_team_scores":
+                        _server.SendMessage(client, websocket_message_handlers.websocket_message_get_team_scores(message.arguments));
                         break;
                     case "feature_enable":
                         client[message.arguments["feature"]] = true;
