@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="websocket_client.js"></script>
+        <script src="config.js"></script>
+        <style>
+            @font-face {
+                font-family: 'UniversCondensedBold';
+                src: url('univers67condensedbold.otf') format('opentype');
+                font-weight: bold;
+                font-style: normal;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'UniversCondensedBold', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: transparent;
+                color: white;
+                display: flex;
+                justify-content: center;
+                padding: 10px;
+            }
+
+            #scoreboard-container {
+                width: 450px;
+                background: rgba(15, 26, 42, 0.95);
+                border: 2px solid #1A2C45;
+            }
+
+            /* Team Score Header */
+            .team-scores-header {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: #243855;
+                padding: 8px 0;
+                border-bottom: 2px solid #1A2C45;
+            }
+
+            .team-score-box {
+                display: flex;
+                align-items: center;
+                padding: 5px 20px;
+            }
+
+            .team-score-box.red {
+                background: linear-gradient(90deg, #8B0000 0%, #C13E3E 100%);
+            }
+
+            .team-score-box.blue {
+                background: linear-gradient(90deg, #3639C9 0%, #1A3A75 100%);
+            }
+
+            .team-label {
+                font-size: 14px;
+                text-transform: uppercase;
+                margin-right: 10px;
+                opacity: 0.9;
+            }
+
+            .team-total-score {
+                font-size: 28px;
+                font-weight: bold;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            }
+
+            .score-divider {
+                font-size: 20px;
+                padding: 0 15px;
+                color: #888;
+            }
+
+            /* Team Section */
+            .team-section {
+                border-bottom: 2px solid #1A2C45;
+            }
+
+            .team-section:last-child {
+                border-bottom: none;
+            }
+
+            .team-header {
+                display: flex;
+                padding: 6px 10px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .team-header.red {
+                background: #A10000;
+            }
+
+            .team-header.blue {
+                background: #2A4C91;
+            }
+
+            .header-emblem { width: 40px; }
+            .header-name { flex: 1; }
+            .header-weapon { width: 50px; text-align: center; }
+            .header-stat { width: 35px; text-align: center; }
+
+            /* Player Row */
+            .player-row {
+                display: flex;
+                align-items: center;
+                padding: 4px 10px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+
+            .player-row:last-child {
+                border-bottom: none;
+            }
+
+            .player-row.red {
+                background: rgba(161, 0, 0, 0.6);
+            }
+
+            .player-row.blue {
+                background: rgba(42, 76, 145, 0.6);
+            }
+
+            .player-row.dead {
+                opacity: 0.5;
+            }
+
+            .player-emblem {
+                width: 40px;
+                height: 36px;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .player-emblem img {
+                max-width: 32px;
+                max-height: 32px;
+            }
+
+            .dead-x {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 36px;
+                color: #ff0000;
+                font-weight: bold;
+                text-shadow: 2px 2px 2px black, -1px -1px 2px black;
+                pointer-events: none;
+            }
+
+            .player-name {
+                flex: 1;
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding-left: 5px;
+            }
+
+            .player-weapon {
+                width: 50px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .player-weapon img {
+                max-width: 40px;
+                max-height: 20px;
+                filter: brightness(1.2);
+            }
+
+            .player-stat {
+                width: 35px;
+                text-align: center;
+                font-size: 14px;
+                font-weight: bold;
+            }
+
+            .player-stat.kills {
+                color: #88ff88;
+            }
+
+            .player-stat.deaths {
+                color: #ff8888;
+            }
+
+            .no-players {
+                padding: 10px;
+                text-align: center;
+                color: #666;
+                font-size: 12px;
+            }
+
+            #connection-status {
+                position: fixed;
+                bottom: 5px;
+                right: 5px;
+                font-size: 10px;
+                color: #888;
+            }
+
+            .game-type-label {
+                font-size: 10px;
+                color: #aaa;
+                text-transform: uppercase;
+                margin-left: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="scoreboard-container">
+            <div class="team-scores-header">
+                <div class="team-score-box red">
+                    <span class="team-label">Red</span>
+                    <span class="team-total-score" id="red-score">0</span>
+                </div>
+                <span class="score-divider">-</span>
+                <div class="team-score-box blue">
+                    <span class="team-total-score" id="blue-score">0</span>
+                    <span class="team-label" style="margin-left: 10px; margin-right: 0;">Blue</span>
+                </div>
+                <span class="game-type-label" id="game-type-label"></span>
+            </div>
+
+            <!-- Red Team Section -->
+            <div class="team-section" id="red-section">
+                <div class="team-header red">
+                    <span class="header-emblem"></span>
+                    <span class="header-name">Player</span>
+                    <span class="header-weapon"></span>
+                    <span class="header-stat">K</span>
+                    <span class="header-stat">D</span>
+                </div>
+                <div id="red-players"></div>
+            </div>
+
+            <!-- Blue Team Section -->
+            <div class="team-section" id="blue-section">
+                <div class="team-header blue">
+                    <span class="header-emblem"></span>
+                    <span class="header-name">Player</span>
+                    <span class="header-weapon"></span>
+                    <span class="header-stat">K</span>
+                    <span class="header-stat">D</span>
+                </div>
+                <div id="blue-players"></div>
+            </div>
+        </div>
+        <div id="connection-status">Connecting...</div>
+
+        <script>
+            const client = new websocket_client();
+            let updateInterval;
+            let redTeamData = null;
+            let blueTeamData = null;
+
+            async function init() {
+                const wsUrl = `ws://${window.config.host}:${window.config.port}`;
+
+                try {
+                    await client.connect(wsUrl);
+                    document.getElementById('connection-status').textContent = 'Connected';
+
+                    client.add_message_recieved_callback('get_team_scoreboard', handleTeamScoreboard);
+                    client.add_message_recieved_callback('close', handleDisconnect);
+
+                    // Request both teams
+                    requestBothTeams();
+
+                    // Poll every 500ms
+                    updateInterval = setInterval(requestBothTeams, 500);
+
+                } catch (error) {
+                    document.getElementById('connection-status').textContent = 'Connection failed';
+                    console.error('Failed to connect:', error);
+                    setTimeout(init, 3000);
+                }
+            }
+
+            function requestBothTeams() {
+                client.request_team_scoreboard(0); // Red
+                client.request_team_scoreboard(1); // Blue
+            }
+
+            function handleDisconnect() {
+                document.getElementById('connection-status').textContent = 'Disconnected - Reconnecting...';
+                if (updateInterval) clearInterval(updateInterval);
+                setTimeout(init, 3000);
+            }
+
+            function handleTeamScoreboard(response) {
+                const teamIndex = response.team_index;
+
+                if (teamIndex === 0) {
+                    redTeamData = response;
+                    document.getElementById('red-score').textContent = response.team_score;
+                    renderTeamPlayers('red-players', response.players, 'red');
+                } else if (teamIndex === 1) {
+                    blueTeamData = response;
+                    document.getElementById('blue-score').textContent = response.team_score;
+                    renderTeamPlayers('blue-players', response.players, 'blue');
+                }
+
+                // Update game type label
+                document.getElementById('game-type-label').textContent = response.game_type_display || '';
+            }
+
+            function renderTeamPlayers(containerId, players, teamClass) {
+                const container = document.getElementById(containerId);
+
+                if (!players || players.length === 0) {
+                    container.innerHTML = '<div class="no-players">No players</div>';
+                    return;
+                }
+
+                let html = '';
+                players.forEach(player => {
+                    const deadClass = player.is_dead ? 'dead' : '';
+                    const emblemUrl = getEmblemUrl(player);
+                    const weaponImg = getWeaponImage(player.current_weapon);
+
+                    html += `
+                        <div class="player-row ${teamClass} ${deadClass}">
+                            <div class="player-emblem">
+                                <img src="${emblemUrl}" alt="" onerror="this.style.display='none'">
+                                ${player.is_dead ? '<span class="dead-x">X</span>' : ''}
+                            </div>
+                            <span class="player-name">${player.name}</span>
+                            <div class="player-weapon">
+                                ${weaponImg}
+                            </div>
+                            <span class="player-stat kills">${player.kills}</span>
+                            <span class="player-stat deaths">${player.deaths}</span>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+
+            function getEmblemUrl(player) {
+                if (player.emblem_foreground === undefined) return '';
+                return `https://www.halo2pc.com/test-pages/CartoStat/Emblem/emblem.php?P=${player.primary_color}&S=${player.secondary_color}&EP=${player.tertiary_color}&ES=${player.quaternary_color}&EF=${player.emblem_foreground}&EB=${player.emblem_background}&ET=0`;
+            }
+
+            function getWeaponImage(weaponName) {
+                if (!weaponName || weaponName === 'None') return '';
+                const weaponFile = weaponName.replace(/\s+/g, '');
+                return `<img src="Weapons/${weaponFile}.png" alt="${weaponName}" onerror="this.style.display='none'">`;
+            }
+
+            init();
+        </script>
+    </body>
+</html>
