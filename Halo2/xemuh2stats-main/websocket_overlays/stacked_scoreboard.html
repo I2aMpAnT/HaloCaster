@@ -5,9 +5,9 @@
         <script src="config.js"></script>
         <style>
             @font-face {
-                font-family: 'UniversCondensedBold';
-                src: url('univers67condensedbold.otf') format('opentype');
-                font-weight: bold;
+                font-family: 'HighwayGothic';
+                src: url('highway-gothic.ttf') format('truetype');
+                font-weight: normal;
                 font-style: normal;
             }
 
@@ -18,14 +18,14 @@
             }
 
             body {
-                font-family: 'UniversCondensedBold', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'HighwayGothic', 'Arial Narrow', Arial, sans-serif;
                 background-color: transparent;
                 color: white;
+                text-shadow: 1px 1px 1px black;
             }
 
             #scoreboard-container {
-                width: 380px;
-                background: rgba(0, 0, 0, 0.75);
+                width: 420px;
             }
 
             /* Team Score Header Rows */
@@ -33,77 +33,59 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 4px 12px;
+                padding: 6px 12px;
                 font-size: 18px;
                 font-weight: bold;
             }
 
             .team-score-row.red {
-                color: #ff6666;
+                background: rgba(139, 0, 0, 0.85);
             }
 
             .team-score-row.blue {
-                color: #6699ff;
+                background: rgba(30, 60, 120, 0.85);
             }
 
-            .team-name {
-                text-shadow: 1px 1px 2px black;
-            }
-
-            .team-score {
-                text-shadow: 1px 1px 2px black;
-            }
-
-            /* Team Divider */
-            .team-divider {
-                height: 2px;
-                background: #cc0000;
-                margin: 0;
+            /* Gap between headers and players */
+            .team-gap {
+                height: 8px;
             }
 
             /* Player Row */
             .player-row {
                 display: flex;
                 align-items: center;
-                padding: 2px 8px;
+                padding: 4px 8px;
                 font-size: 14px;
             }
 
+            .player-row.red {
+                background: rgba(139, 0, 0, 0.7);
+            }
+
+            .player-row.blue {
+                background: rgba(30, 60, 120, 0.7);
+            }
+
             .player-emblem {
-                width: 24px;
-                height: 24px;
+                width: 26px;
+                height: 26px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: rgba(0,0,0,0.3);
+                margin-right: 6px;
             }
 
             .player-emblem img {
-                width: 22px;
-                height: 22px;
+                width: 24px;
+                height: 24px;
             }
 
             .dead-x {
-                font-size: 22px;
+                font-size: 24px;
                 color: #ff0000;
                 font-weight: bold;
-                text-shadow: 1px 1px 1px black, -1px -1px 1px black;
-                line-height: 1;
-            }
-
-            .player-weapon {
-                width: 32px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-left: 4px;
-            }
-
-            .player-weapon img {
-                max-width: 28px;
-                max-height: 16px;
-                filter: brightness(1.1);
+                text-shadow: 1px 1px 2px black, -1px -1px 1px black;
             }
 
             .player-name {
@@ -111,28 +93,45 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                text-shadow: 1px 1px 2px black;
-                margin-left: 6px;
+                min-width: 100px;
+            }
+
+            .player-weapon {
+                width: 40px;
+                height: 22px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 8px;
+            }
+
+            .player-weapon img {
+                max-width: 36px;
+                max-height: 18px;
             }
 
             .player-stats {
                 display: flex;
-                gap: 2px;
-                margin-left: 8px;
-            }
-
-            .player-stat {
-                width: 24px;
-                text-align: center;
-                font-weight: bold;
-                text-shadow: 1px 1px 2px black;
+                align-items: center;
+                gap: 4px;
                 font-size: 13px;
             }
 
-            .stat-k { color: #88ff88; }
-            .stat-d { color: #ff8888; }
-            .stat-a { color: #88aaff; }
-            .stat-obj { color: #ffff66; }
+            .stat-label {
+                color: #aaa;
+                margin-right: 1px;
+            }
+
+            .stat-value {
+                min-width: 18px;
+                text-align: right;
+            }
+
+            .stat-group {
+                display: flex;
+                align-items: center;
+                margin-left: 6px;
+            }
 
             #connection-status {
                 position: fixed;
@@ -147,17 +146,18 @@
         <div id="scoreboard-container">
             <!-- Team Score Headers -->
             <div class="team-score-row red">
-                <span class="team-name">Red Team</span>
-                <span class="team-score" id="red-score">0</span>
+                <span>Red Team</span>
+                <span id="red-score">0</span>
             </div>
             <div class="team-score-row blue">
-                <span class="team-name">Blue Team</span>
-                <span class="team-score" id="blue-score">0</span>
+                <span>Blue Team</span>
+                <span id="blue-score">0</span>
             </div>
+
+            <div class="team-gap"></div>
 
             <!-- Red Team Players -->
             <div id="red-players"></div>
-            <div class="team-divider"></div>
 
             <!-- Blue Team Players -->
             <div id="blue-players"></div>
@@ -168,7 +168,6 @@
             const client = new websocket_client();
             let updateInterval;
 
-            // Store last known players to persist display
             let lastRedPlayers = [];
             let lastBluePlayers = [];
             let currentGameType = 'slayer';
@@ -195,7 +194,7 @@
             }
 
             function requestData() {
-                client.request_players("full");
+                client.request_players("scoreboard");
                 client.request_variant_details();
             }
 
@@ -205,9 +204,7 @@
                 setTimeout(init, 3000);
             }
 
-            function handleError(error) {
-                // Keep existing display on error
-            }
+            function handleError(error) {}
 
             function handleVariantDetails(details) {
                 if (details && details.game_type) {
@@ -217,27 +214,6 @@
 
             function isObjectiveGame() {
                 return ['capture_the_flag', 'assault', 'oddball', 'king_of_the_hill', 'territories', 'juggernaut'].includes(currentGameType);
-            }
-
-            function getObjectiveScore(player) {
-                if (!player.game_stats) return 0;
-                const stats = player.game_stats;
-                switch (currentGameType) {
-                    case 'capture_the_flag':
-                        return stats.ctf_scores || 0;
-                    case 'assault':
-                        return stats.assault_score || 0;
-                    case 'oddball':
-                        return stats.oddball_score || 0;
-                    case 'king_of_the_hill':
-                        return stats.koth_kills_as_king || 0;
-                    case 'territories':
-                        return stats.territories_taken || 0;
-                    case 'juggernaut':
-                        return stats.juggernaut_time || 0;
-                    default:
-                        return 0;
-                }
             }
 
             function handlePlayers(playersData) {
@@ -250,11 +226,16 @@
                 const isObj = isObjectiveGame();
 
                 playerNames.forEach(playerName => {
-                    const player = playersData[playerName];
-                    const kills = player.game_stats ? player.game_stats.kills : 0;
-                    const deaths = player.game_stats ? player.game_stats.deaths : 0;
-                    const assists = player.game_stats ? player.game_stats.assists : 0;
-                    const objScore = getObjectiveScore(player);
+                    const p = playersData[playerName];
+                    const kills = parseInt(p.kills) || 0;
+                    const deaths = parseInt(p.deaths) || 0;
+                    const assists = parseInt(p.assists) || 0;
+
+                    // Get objective score based on game type
+                    let objScore = 0;
+                    if (p.ctf_scores) objScore = parseInt(p.ctf_scores) || 0;
+                    if (currentGameType === 'assault' && p.assault_score) objScore = parseInt(p.assault_score) || 0;
+                    if (currentGameType === 'oddball' && p.oddball_score) objScore = parseInt(p.oddball_score) || 0;
 
                     const playerData = {
                         name: playerName,
@@ -262,81 +243,66 @@
                         deaths: deaths,
                         assists: assists,
                         obj_score: objScore,
-                        is_dead: player.player && player.player.respawn_time !== 0,
-                        current_weapon: 'None',
-                        emblem_foreground: player.player?.profile_traits?.profile?.emblem_info?.foreground_emblem,
-                        emblem_background: player.player?.profile_traits?.profile?.emblem_info?.background_emblem,
-                        primary_color: player.player?.profile_traits?.profile?.primary_color,
-                        secondary_color: player.player?.profile_traits?.profile?.secondary_color,
-                        tertiary_color: player.player?.profile_traits?.profile?.tertiary_color,
-                        quaternary_color: player.player?.profile_traits?.profile?.quaternary_color
+                        score: isObj ? objScore : kills,
+                        is_dead: p.is_dead === 'True' || p.is_dead === true,
+                        current_weapon: p.current_weapon || 'None',
+                        emblem_foreground: p.emblem_foreground,
+                        emblem_background: p.emblem_background,
+                        primary_color: p.primary_color,
+                        secondary_color: p.secondary_color,
+                        tertiary_color: p.tertiary_color,
+                        quaternary_color: p.quaternary_color
                     };
 
-                    // Get team from player properties
-                    const teamIndex = player.player?.team_index;
-                    const isRed = teamIndex === 0 || (typeof teamIndex === 'string' && teamIndex.includes('red'));
-                    const isBlue = teamIndex === 1 || (typeof teamIndex === 'string' && teamIndex.includes('blue'));
-
-                    if (isRed) {
+                    const team = p.team || '';
+                    if (team.includes('red')) {
                         redPlayers.push(playerData);
-                        redScore += isObj ? objScore : kills;
-                    } else if (isBlue) {
+                        redScore += playerData.score;
+                    } else if (team.includes('blue')) {
                         bluePlayers.push(playerData);
-                        blueScore += isObj ? objScore : kills;
+                        blueScore += playerData.score;
                     }
                 });
 
-                // Sort by objective score for obj games, kills for slayer
-                const sortKey = isObj ? 'obj_score' : 'kills';
-                redPlayers.sort((a, b) => b[sortKey] - a[sortKey]);
-                bluePlayers.sort((a, b) => b[sortKey] - a[sortKey]);
+                // Sort by score descending
+                redPlayers.sort((a, b) => b.score - a.score);
+                bluePlayers.sort((a, b) => b.score - a.score);
 
-                // Update scores
                 document.getElementById('red-score').textContent = redScore;
                 document.getElementById('blue-score').textContent = blueScore;
 
-                // Update players
-                if (redPlayers.length > 0) {
-                    lastRedPlayers = redPlayers;
-                }
-                if (bluePlayers.length > 0) {
-                    lastBluePlayers = bluePlayers;
-                }
+                if (redPlayers.length > 0) lastRedPlayers = redPlayers;
+                if (bluePlayers.length > 0) lastBluePlayers = bluePlayers;
 
-                renderTeamPlayers('red-players', redPlayers.length > 0 ? redPlayers : lastRedPlayers);
-                renderTeamPlayers('blue-players', bluePlayers.length > 0 ? bluePlayers : lastBluePlayers);
+                renderTeamPlayers('red-players', redPlayers.length > 0 ? redPlayers : lastRedPlayers, 'red');
+                renderTeamPlayers('blue-players', bluePlayers.length > 0 ? bluePlayers : lastBluePlayers, 'blue');
             }
 
-            function renderTeamPlayers(containerId, players) {
+            function renderTeamPlayers(containerId, players, teamClass) {
                 const container = document.getElementById(containerId);
-
-                if (!players || players.length === 0) {
-                    return;
-                }
+                if (!players || players.length === 0) return;
 
                 const isObj = isObjectiveGame();
                 let html = '';
+
                 players.forEach(player => {
                     const emblemUrl = getEmblemUrl(player);
                     const weaponImg = getWeaponImage(player.current_weapon);
 
-                    // Show red X instead of emblem when dead
                     const emblemContent = player.is_dead
                         ? '<span class="dead-x">X</span>'
                         : `<img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">`;
 
                     html += `
-                        <div class="player-row">
-                            <div class="player-emblem">
-                                ${emblemContent}
-                            </div>
-                            <div class="player-weapon">${weaponImg}</div>
+                        <div class="player-row ${teamClass}">
+                            <div class="player-emblem">${emblemContent}</div>
                             <span class="player-name">${player.name}</span>
+                            <div class="player-weapon">${weaponImg}</div>
                             <div class="player-stats">
-                                ${isObj ? `<span class="player-stat stat-obj">${player.obj_score}</span>` : ''}
-                                <span class="player-stat stat-k">${player.kills}</span>
-                                <span class="player-stat stat-d">${player.deaths}</span>
-                                <span class="player-stat stat-a">${player.assists}</span>
+                                ${isObj ? `<span class="stat-group"><span class="stat-label">Score</span><span class="stat-value">${player.obj_score}</span></span>` : ''}
+                                <span class="stat-group"><span class="stat-label">K</span><span class="stat-value">${player.kills}</span></span>
+                                <span class="stat-group"><span class="stat-label">D</span><span class="stat-value">${player.deaths}</span></span>
+                                <span class="stat-group"><span class="stat-label">A</span><span class="stat-value">${player.assists}</span></span>
                             </div>
                         </div>
                     `;
@@ -353,7 +319,7 @@
             function getWeaponImage(weaponName) {
                 if (!weaponName || weaponName === 'None') return '';
                 const weaponFile = weaponName.replace(/\s+/g, '');
-                return `<img src="Weapons/${weaponFile}.png" alt="" onerror="this.style.display='none'">`;
+                return `<img src="Weapons/${weaponFile}.png" alt="" onerror="this.parentElement.innerHTML=''">`;
             }
 
             init();
