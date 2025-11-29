@@ -251,15 +251,30 @@
                 renderScoreboard();
             }
 
+            // Check if game type uses time-based scoring
+            function isTimeBasedGameType(gameType) {
+                if (!gameType) return false;
+                const gt = gameType.toLowerCase();
+                return gt.includes('oddball') || gt.includes('ball') ||
+                       gt.includes('king') || gt.includes('koth') ||
+                       gt.includes('juggernaut');
+            }
+
             function renderScoreboard() {
+                // Determine if scores should be displayed as time
+                const gameType = redTeamData?.game_type || blueTeamData?.game_type;
+                const useTimeFormat = isTimeBasedGameType(gameType);
+
                 // Update team headers
                 if (redTeamData) {
                     document.getElementById('red-team-name').textContent = redTeamData.team_name || 'Red Team';
-                    document.getElementById('red-team-score').textContent = redTeamData.team_score || 0;
+                    const redScore = redTeamData.team_score || 0;
+                    document.getElementById('red-team-score').textContent = useTimeFormat ? formatTime(redScore) : redScore;
                 }
                 if (blueTeamData) {
                     document.getElementById('blue-team-name').textContent = blueTeamData.team_name || 'Blue Team';
-                    document.getElementById('blue-team-score').textContent = blueTeamData.team_score || 0;
+                    const blueScore = blueTeamData.team_score || 0;
+                    document.getElementById('blue-team-score').textContent = useTimeFormat ? formatTime(blueScore) : blueScore;
                 }
 
                 const playersSection = document.getElementById('players-section');
