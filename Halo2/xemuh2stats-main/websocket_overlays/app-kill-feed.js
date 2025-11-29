@@ -130,8 +130,78 @@ function fadeOutAndRemove(element, duration, delay) {
     }, delay);
 }
 
+// Handle score events (flag captures, bomb arms)
+client.add_message_recieved_callback('score_event_push', (scoreData) => {
+    const player = scoreData.player;
+    const playerTeam = scoreData.player_team || '';
+    const eventType = scoreData.event_type;
+    const oppositeTeam = scoreData.opposite_team || '';
+
+    // Determine background class based on player's team
+    let teamClass = 'neutral';
+    if (playerTeam.includes('red')) {
+        teamClass = 'red';
+    } else if (playerTeam.includes('blue')) {
+        teamClass = 'blue';
+    }
+
+    // Create score event entry
+    const entry = document.createElement('div');
+    entry.className = 'kill-entry ' + teamClass;
+    entry.id = 'kill_' + current_id;
+
+    // Format based on event type
+    if (eventType === 'flag_capture') {
+        // Get opposite team name for display (oppositeTeam is "Red", "Blue", etc.)
+        let oppositeTeamName = "the enemy's";
+        const oppLower = oppositeTeam.toLowerCase();
+        if (oppLower === 'red') {
+            oppositeTeamName = "Red Team's";
+        } else if (oppLower === 'blue') {
+            oppositeTeamName = "Blue Team's";
+        } else if (oppLower === 'yellow') {
+            oppositeTeamName = "Yellow Team's";
+        } else if (oppLower === 'green') {
+            oppositeTeamName = "Green Team's";
+        }
+
+        entry.innerHTML = `
+            <span class="killer">${player}</span>
+            <span class="killed-text">captured</span>
+            <img class="weapon-icon" src="Weapons/Flag.png" alt="Flag" />
+            <span class="victim">${oppositeTeamName} flag!</span>
+        `;
+    } else if (eventType === 'bomb_arm') {
+        entry.innerHTML = `
+            <span class="killer">${player}</span>
+            <span class="killed-text">armed</span>
+            <img class="weapon-icon" src="Weapons/AssaultBomb.png" alt="Bomb" />
+            <span class="victim">the bomb!</span>
+        `;
+    } else {
+        // Unknown event type, skip
+        return;
+    }
+
+    // Add to container (prepend so newest is on top)
+    const container = document.getElementById('kill-feed-container');
+    container.prepend(entry);
+
+    current_id++;
+
+    // Fade out and remove after delay
+    fadeOutAndRemove(entry, 1000, 4000);
+
+    // Limit to 5 visible entries
+    const entries = container.querySelectorAll('.kill-entry');
+    if (entries.length > 5) {
+        entries[entries.length - 1].remove();
+    }
+});
+
 function start() {
     client.request_feature_enable("kills_push");
+    client.request_feature_enable("scores_push");
 }
 
 document.addEventListener("DOMContentLoaded", function() {

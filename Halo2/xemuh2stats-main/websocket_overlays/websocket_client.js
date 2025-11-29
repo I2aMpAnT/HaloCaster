@@ -112,6 +112,11 @@ class websocket_client {
                     this.eventHandlers['kill_feed_push'](response);
                 }
                 break;
+            case 'score_event_push':
+                if (this.eventHandlers['score_event_push']) {
+                    this.eventHandlers['score_event_push'](response);
+                }
+                break;
             case 'game_event_push':
                 if(this.eventHandlers['game_event_push']){
                     this.eventHandlers['game_event_push'](response);

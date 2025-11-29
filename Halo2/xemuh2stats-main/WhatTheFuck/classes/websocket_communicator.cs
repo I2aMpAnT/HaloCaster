@@ -67,6 +67,18 @@ namespace WhatTheFuck.classes
             return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, string>>("kill_feed_push", "", killData));
         }
 
+        public static string websocket_message_send_score(string player, string playerTeam, string eventType, string oppositeTeam)
+        {
+            var scoreData = new Dictionary<string, string>
+            {
+                { "player", player },
+                { "player_team", playerTeam },
+                { "event_type", eventType },
+                { "opposite_team", oppositeTeam }
+            };
+            return JsonConvert.SerializeObject(new websocket_response<Dictionary<string, string>>("score_event_push", "", scoreData));
+        }
+
         public static string websocket_message_get_variant_details(Dictionary<string, string> arguments)
         {
             return JsonConvert.SerializeObject(
@@ -638,29 +650,58 @@ namespace WhatTheFuck.classes
 
         public static void _server_on_raw_game_event(s_game_result_event game_event)
         {
-            // Only process kill events for the kill feed
-            if (game_event.type != e_game_results_event_type._game_results_event_type_kill)
-                return;
-
-            string killer = real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index);
-            string victim = real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index);
-            string weapon = game_event.data.kill_event.statistic_index.ToString();
-
-            // Get team info for both players
-            string killerTeam = "";
-            string victimTeam = "";
-            try
+            // Handle kill events
+            if (game_event.type == e_game_results_event_type._game_results_event_type_kill)
             {
-                var killerPlayer = real_time_player_stats.get(game_event.source_player_index);
-                var victimPlayer = real_time_player_stats.get(game_event.effected_player_index);
-                killerTeam = killerPlayer.player.team_index.ToString();
-                victimTeam = victimPlayer.player.team_index.ToString();
+                string killer = real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index);
+                string victim = real_time_player_stats.GetPlayerNameExplicit(game_event.effected_player_index);
+                string weapon = game_event.data.kill_event.statistic_index.ToString();
+
+                string killerTeam = "";
+                string victimTeam = "";
+                try
+                {
+                    var killerPlayer = real_time_player_stats.get(game_event.source_player_index);
+                    var victimPlayer = real_time_player_stats.get(game_event.effected_player_index);
+                    killerTeam = killerPlayer.player.team_index.ToString();
+                    victimTeam = victimPlayer.player.team_index.ToString();
+                }
+                catch { }
+
+                foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["kills_push"]))
+                {
+                    _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_kill(killer, killerTeam, victim, victimTeam, weapon));
+                }
             }
-            catch { }
-
-            foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["kills_push"]))
+            // Handle score events (flag captures, bomb arms)
+            else if (game_event.type == e_game_results_event_type._game_results_event_type_score)
             {
-                _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_kill(killer, killerTeam, victim, victimTeam, weapon));
+                string player = real_time_player_stats.GetPlayerNameExplicit(game_event.source_player_index);
+                int scoreType = game_event.data.score_event.score_type;
+                string playerTeam = "";
+                string oppositeTeam = "";
+
+                try
+                {
+                    var scoringPlayer = real_time_player_stats.get(game_event.source_player_index);
+                    playerTeam = scoringPlayer.player.team_index.ToString();
+                    // Determine opposite team (0=red, 1=blue)
+                    if (scoringPlayer.player.team_index == e_game_team._game_team_red)
+                        oppositeTeam = "Blue";
+                    else if (scoringPlayer.player.team_index == e_game_team._game_team_blue)
+                        oppositeTeam = "Red";
+                    else
+                        oppositeTeam = "Enemy";
+                }
+                catch { }
+
+                // scoreType: 1 = flag, 2 = bomb
+                string eventType = scoreType == 1 ? "flag_capture" : "bomb_arm";
+
+                foreach (var websocketClient in _server._clients.Where(websocketClient => websocketClient["scores_push"]))
+                {
+                    _server.SendMessage(websocketClient, websocket_message_handlers.websocket_message_send_score(player, playerTeam, eventType, oppositeTeam));
+                }
             }
         }
 
