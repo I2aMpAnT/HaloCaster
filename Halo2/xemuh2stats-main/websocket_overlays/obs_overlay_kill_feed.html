@@ -6,26 +6,27 @@
         <script src="app-kill-feed.js"></script>
         <style>
             @font-face {
-                font-family: 'UniversCondensedBold';
-                src: url('univers67condensedbold.otf') format('opentype');
-                font-weight: bold;
+                font-family: 'HighwayGothic';
+                src: url('highway-gothic.ttf') format('truetype');
+                font-weight: normal;
                 font-style: normal;
             }
 
             body {
-                font-family: 'UniversCondensedBold', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                font-size: 18px;
+                font-family: 'HighwayGothic', 'Arial Narrow', Arial, sans-serif;
+                font-size: 16px;
                 margin: 0;
                 padding: 10px;
                 background-color: transparent;
                 color: white;
+                text-shadow: 1px 1px 1px black;
             }
 
             #kill-feed-container {
                 display: flex;
                 flex-direction: column;
                 align-items: flex-end;
-                gap: 5px;
+                gap: 4px;
                 position: fixed;
                 top: 10px;
                 right: 10px;
@@ -34,12 +35,23 @@
             .kill-entry {
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.7) 20%, rgba(0, 0, 0, 0.8) 100%);
-                padding: 6px 12px;
-                border-radius: 4px;
+                gap: 6px;
+                padding: 5px 10px;
+                border-radius: 3px;
                 animation: slideIn 0.3s ease-out;
                 white-space: nowrap;
+            }
+
+            .kill-entry.red {
+                background: rgba(180, 50, 50, 0.9);
+            }
+
+            .kill-entry.blue {
+                background: rgba(60, 90, 160, 0.9);
+            }
+
+            .kill-entry.neutral {
+                background: rgba(80, 80, 80, 0.9);
             }
 
             @keyframes slideIn {
@@ -53,24 +65,21 @@
                 }
             }
 
-            .victim {
+            .killer {
                 font-weight: bold;
-                text-shadow: 1px 1px 2px black;
             }
 
             .killed-text {
-                color: #AAAAAA;
                 font-size: 14px;
             }
 
-            .killer {
+            .victim {
                 font-weight: bold;
-                text-shadow: 1px 1px 2px black;
             }
 
             .weapon-icon {
-                height: 24px;
-                filter: drop-shadow(1px 1px 2px black);
+                height: 18px;
+                filter: brightness(1.1);
             }
         </style>
     </head>

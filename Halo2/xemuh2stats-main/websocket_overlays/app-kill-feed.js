@@ -66,23 +66,28 @@ client.add_message_recieved_callback('kill_feed_push', (killData) => {
     const victimTeam = killData.victim_team || '';
     const weapon = killData.weapon;
 
-    // Get team colors (default to white if no team)
-    const killerColor = teamColors[killerTeam] || '#FFFFFF';
-    const victimColor = teamColors[victimTeam] || '#FFFFFF';
+    // Determine background class based on killer's team
+    let teamClass = 'neutral';
+    if (killerTeam.includes('red')) {
+        teamClass = 'red';
+    } else if (killerTeam.includes('blue')) {
+        teamClass = 'blue';
+    }
 
     // Get weapon icon
     const weaponIcon = weaponIcons[weapon] || 'Guardians.png';
 
     // Create kill feed entry
     const entry = document.createElement('div');
-    entry.className = 'kill-entry';
+    entry.className = 'kill-entry ' + teamClass;
     entry.id = 'kill_' + current_id;
 
+    // Format: {killer} killed {weapon icon} {victim}
     entry.innerHTML = `
-        <span class="victim" style="color: ${victimColor};">${victim}</span>
-        <span class="killed-text">killed by</span>
-        <span class="killer" style="color: ${killerColor};">${killer}</span>
+        <span class="killer">${killer}</span>
+        <span class="killed-text">killed</span>
         <img class="weapon-icon" src="Weapons/${weaponIcon}" alt="${weapon}" />
+        <span class="victim">${victim}</span>
     `;
 
     // Add to container (prepend so newest is on top)
