@@ -801,10 +801,6 @@ namespace xemuh2stats
                         string qmpArgs = $"-qmp tcp:localhost:{port},server,nowait";
                         string fullCommand = $"\"{xemu_path}\" {qmpArgs}";
 
-                        // Debug: Show what we're launching
-                        MessageBox.Show($"Launching XEMU:\n\nCommand: {fullCommand}\n\nWorking Dir: {xemuDirectory}",
-                            "Debug - Launch Command", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
                         // Use cmd.exe /c to ensure arguments are passed exactly as specified
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
