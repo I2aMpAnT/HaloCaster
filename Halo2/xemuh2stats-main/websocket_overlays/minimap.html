@@ -51,6 +51,11 @@
             border: 2px solid #444;
             margin-top: 20px;
             background-color: #0a0a1e;
+            cursor: grab;
+        }
+
+        #minimap:active {
+            cursor: grabbing;
         }
 
         .controls {
@@ -77,6 +82,12 @@
             min-width: 60px;
             text-align: center;
         }
+
+        .info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+        }
     </style>
 </head>
 <body>
@@ -99,8 +110,10 @@
             <span id="zoomLevel">100%</span>
             <button id="zoomIn">+</button>
         </div>
-        <button id="resetZoom">Reset Zoom</button>
+        <button id="resetView">Reset View</button>
     </div>
+
+    <p class="info">Drag to pan, scroll to zoom, click Reset View to restore default position</p>
 
     <!-- Minimap Canvas -->
     <canvas id="minimap" width="500" height="500"></canvas>
@@ -119,6 +132,13 @@
         const zoomStep = 0.25;
         const baseWorldSize = 50; // Base range of [-25, 25]
 
+        // Pan variables
+        let panX = 0; // World coordinate offset
+        let panY = 0;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
         function getWorldSize() {
             return baseWorldSize / zoomLevel;
         }
@@ -134,6 +154,7 @@
         const circleMaxSize = 10;
 
         let playersData = {};
+        let lastUpdateTime = 0;
 
         // WebSocket Client
         class WebSocketClient {
@@ -185,7 +206,9 @@
                 const response = responseWrapper.response;
 
                 if (responseWrapper.message_type === 'get_players') {
+                    // Replace entire playersData to clear old/disconnected players
                     playersData = response;
+                    lastUpdateTime = Date.now();
                     drawMinimap();
                 }
             }
@@ -239,10 +262,65 @@
             }
         });
 
-        document.getElementById('resetZoom').addEventListener('click', function() {
+        document.getElementById('resetView').addEventListener('click', function() {
             zoomLevel = 1.0;
+            panX = 0;
+            panY = 0;
             updateZoomDisplay();
             drawMinimap();
+        });
+
+        // Mouse wheel zoom
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                // Zoom in
+                if (zoomLevel < maxZoom) {
+                    zoomLevel = Math.min(zoomLevel + zoomStep, maxZoom);
+                }
+            } else {
+                // Zoom out
+                if (zoomLevel > minZoom) {
+                    zoomLevel = Math.max(zoomLevel - zoomStep, minZoom);
+                }
+            }
+            updateZoomDisplay();
+            drawMinimap();
+        });
+
+        // Drag/pan functionality
+        canvas.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+
+                // Convert pixel movement to world coordinates
+                const scale = getScale();
+                panX += deltaX / scale;
+                panY -= deltaY / scale; // Invert Y for world coordinates
+
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+
+                drawMinimap();
+            }
+        });
+
+        canvas.addEventListener('mouseup', function(e) {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', function(e) {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
         });
 
         function updateZoomDisplay() {
@@ -251,6 +329,15 @@
 
         // Team color mapping
         const teamColors = {
+            '0': '#FF4444',  // Red
+            '1': '#4444FF',  // Blue
+            '2': '#FFFF44',  // Yellow
+            '3': '#44FF44',  // Green
+            '4': '#AA44AA',  // Purple
+            '5': '#FF8844',  // Orange
+            '6': '#8B4513',  // Brown
+            '7': '#FF69B4',  // Pink
+            '8': '#AAAAAA',  // Neutral
             '_game_team_red': '#FF4444',
             '_game_team_blue': '#4444FF',
             '_game_team_yellow': '#FFFF44',
@@ -281,26 +368,44 @@
             ctx.strokeStyle = '#1a1a3e';
             ctx.lineWidth = 1;
             const gridSpacing = 10 * scale; // Grid every 10 world units
-            for (let i = -250; i <= 250; i += gridSpacing) {
+
+            // Offset grid based on pan
+            const gridOffsetX = (panX * scale) % gridSpacing;
+            const gridOffsetY = (panY * scale) % gridSpacing;
+
+            for (let i = -canvasSize; i <= canvasSize * 2; i += gridSpacing) {
                 ctx.beginPath();
-                ctx.moveTo(halfCanvasSize + i, 0);
-                ctx.lineTo(halfCanvasSize + i, canvasSize);
+                ctx.moveTo(i + gridOffsetX, 0);
+                ctx.lineTo(i + gridOffsetX, canvasSize);
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.moveTo(0, halfCanvasSize + i);
-                ctx.lineTo(canvasSize, halfCanvasSize + i);
+                ctx.moveTo(0, i - gridOffsetY);
+                ctx.lineTo(canvasSize, i - gridOffsetY);
                 ctx.stroke();
             }
 
-            // Draw center crosshair
+            // Draw center crosshair (at world origin, accounting for pan)
+            const originX = halfCanvasSize + panX * scale;
+            const originY = halfCanvasSize - panY * scale;
             ctx.strokeStyle = '#333366';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(halfCanvasSize, 0);
-            ctx.lineTo(halfCanvasSize, canvasSize);
-            ctx.moveTo(0, halfCanvasSize);
-            ctx.lineTo(canvasSize, halfCanvasSize);
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, canvasSize);
+            ctx.moveTo(0, originY);
+            ctx.lineTo(canvasSize, originY);
             ctx.stroke();
+
+            // Check if data is stale (no update in 2 seconds)
+            const isStale = Date.now() - lastUpdateTime > 2000;
+
+            if (isStale && Object.keys(playersData).length > 0) {
+                // Draw stale indicator
+                ctx.fillStyle = '#FF0000';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('NO DATA', 10, 20);
+            }
 
             // Get first player's Z as reference (or use 0)
             let referenceZ = 0;
@@ -316,11 +421,11 @@
                 const y = player.Y;
                 const z = player.Z;
                 const facing = player.facing || 0;
-                const team = player.team || '_game_team_neutral';
+                const team = player.team || '8'; // Default to neutral
 
-                // Convert world coordinates to canvas coordinates
-                const canvasX = halfCanvasSize + x * scale;
-                const canvasY = halfCanvasSize - y * scale;
+                // Convert world coordinates to canvas coordinates (with pan offset)
+                const canvasX = halfCanvasSize + (x + panX) * scale;
+                const canvasY = halfCanvasSize - (y + panY) * scale;
 
                 // Skip if off canvas
                 if (canvasX < -50 || canvasX > canvasSize + 50 || canvasY < -50 || canvasY > canvasSize + 50) {
