@@ -222,12 +222,20 @@ namespace WhatTheFuck.classes
                 player_data.Add("respawn_timer", state_player.respawn_time == 0 ? 0 : state_player.field_160);
 
                 // Emblem info
-                player_data.Add("emblem_foreground", (int)real_player.player.profile_traits.profile.emblem_info.foreground_emblem);
-                player_data.Add("emblem_background", (int)real_player.player.profile_traits.profile.emblem_info.background_emblem);
-                player_data.Add("primary_color", (int)real_player.player.profile_traits.profile.primary_color);
-                player_data.Add("secondary_color", (int)real_player.player.profile_traits.profile.secondary_color);
-                player_data.Add("tertiary_color", (int)real_player.player.profile_traits.profile.tertiary_color);
-                player_data.Add("quaternary_color", (int)real_player.player.profile_traits.profile.quaternary_color);
+                int emblemFg = (int)real_player.player.profile_traits.profile.emblem_info.foreground_emblem;
+                int emblemBg = (int)real_player.player.profile_traits.profile.emblem_info.background_emblem;
+                int primaryCol = (int)real_player.player.profile_traits.profile.primary_color;
+                int secondaryCol = (int)real_player.player.profile_traits.profile.secondary_color;
+                int tertiaryCol = (int)real_player.player.profile_traits.profile.tertiary_color;
+                int quaternaryCol = (int)real_player.player.profile_traits.profile.quaternary_color;
+
+                player_data.Add("emblem_foreground", emblemFg);
+                player_data.Add("emblem_background", emblemBg);
+                player_data.Add("primary_color", primaryCol);
+                player_data.Add("secondary_color", secondaryCol);
+                player_data.Add("tertiary_color", tertiaryCol);
+                player_data.Add("quaternary_color", quaternaryCol);
+                player_data.Add("emblem_url", $"https://carnagereport.com/?P={primaryCol}&S={secondaryCol}&EP={tertiaryCol}&ES={quaternaryCol}&EF={emblemFg}&EB={emblemBg}&ET=0");
 
                 // Current weapon
                 if (state_player.unit_index != uint.MaxValue)
