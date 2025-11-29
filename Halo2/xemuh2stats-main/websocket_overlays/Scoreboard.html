@@ -197,10 +197,10 @@
                     // Request both teams
                     requestBothTeams();
 
-                    // Poll every 1 second for time-based scores
+                    // Poll every 500ms for responsive time-based scores
                     updateInterval = setInterval(() => {
                         requestBothTeams();
-                    }, 1000);
+                    }, 500);
 
                 } catch (error) {
                     document.getElementById('connection-status').textContent = 'Connection failed';
