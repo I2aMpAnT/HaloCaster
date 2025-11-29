@@ -99,6 +99,12 @@ namespace xemuh2stats
         {
             InitializeComponent();
 
+            // Explicitly set dedi mode to checked on startup (Designer default may not be reliable)
+            profile_disabled_check_box.Checked = true;
+
+            // Apply dark mode on startup
+            ApplyTheme();
+
             // Set default Xemu path to Desktop
             if (string.IsNullOrEmpty(xemu_path_text_box.Text))
             {
@@ -141,12 +147,22 @@ namespace xemuh2stats
         {
             if (xemu_proccess != null)
             {
-                if (xemu_proccess.HasExited)
+                try
                 {
-                    is_valid = false;
-                    configuration_combo_box.Enabled = true;
-                    settings_group_box.Enabled = true;
-                    xemu_launch_button.Enabled = true;
+                    if (xemu_proccess.HasExited)
+                    {
+                        is_valid = false;
+                        configuration_combo_box.Enabled = true;
+                        settings_group_box.Enabled = true;
+                        xemu_launch_button.Enabled = true;
+                        xemu_proccess = null;
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    // Access denied - process handle doesn't have query rights
+                    // This can happen when using Hook Only with a process we didn't start
+                    // Just ignore and assume process is still running
                 }
             }
 
@@ -400,13 +416,24 @@ namespace xemuh2stats
 
         private void render_players_tab()
         {
-            int test_player_count =
-                Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+            // During post_game or when game is ending, use cached data to avoid reading invalid memory
+            var cycle = (life_cycle)Program.memory.ReadInt(Program.exec_resolver["life_cycle"].address);
+            bool useCache = (cycle == life_cycle.post_game || real_time_lock) && real_time_cache.Count > 0;
 
-            var variant = variant_details.get();
-            for (int i = 0; i < test_player_count && i < players_table.Rows.Count; i++)
+            int player_count;
+            if (useCache)
             {
-                var player = real_time_player_stats.get(i);
+                player_count = real_time_cache.Count;
+            }
+            else
+            {
+                player_count = Program.memory.ReadInt(Program.game_state_resolver["game_state_players"].address + 0x3C);
+            }
+
+            var variant = useCache ? Program.variant_details_cache : variant_details.get();
+            for (int i = 0; i < player_count && i < players_table.Rows.Count; i++)
+            {
+                var player = useCache ? real_time_cache[i] : real_time_player_stats.get(i);
 
                 // Load emblem image (wrapped in try-catch to prevent crashes)
                 try
@@ -535,6 +562,19 @@ namespace xemuh2stats
             }
         }
 
+        private void identity_table_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                var cellValue = identity_table.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+                if (cellValue != null && !string.IsNullOrEmpty(cellValue.ToString()))
+                {
+                    Clipboard.SetText(cellValue.ToString());
+                    UpdateHookStatus($"Copied: {cellValue}");
+                }
+            }
+        }
+
         private void render_debug_tab()
         {
 
@@ -630,24 +670,60 @@ namespace xemuh2stats
             Program.game_state_resolver.Add(new offset_resolver_item("game_ending", 0, ""));
             Program.game_state_resolver.Add(new offset_resolver_item("game_engine", 0, ""));
 
-            UpdateHookStatus("Step 5b: Translating base address...");
+            UpdateHookStatus("Step 5b: Translating addresses...");
 
-            // ORIGINAL WORKING CODE: xemu base_address + xbe base_address
-            var host_base_executable_address = (long) Program.qmp.Translate(0x80000000) + 0x5C000;
+            // Try linear mapping first (works on some XEMU versions)
+            var host_base_executable_address = (long)Program.qmp.Translate(0x80000000) + 0x5C000;
 
             foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
             {
                 offsetResolverItem.address = host_base_executable_address + offsetResolverItem.offset;
             }
 
-            UpdateHookStatus("Step 5c: Reading game state pointers...");
+            // Test if linear mapping works by reading the tags address
+            var test_tags_value = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+            var usedLinearMapping = true;
+
+            // If linear mapping returns 0, try per-address translation (for non-linear page tables)
+            if (test_tags_value == 0)
+            {
+                usedLinearMapping = false;
+                UpdateHookStatus("Step 5b: Linear mapping failed, trying per-address translation...");
+
+                // Clear any cached translations
+                QmpProxy.ClearCaches();
+
+                const ulong XBE_BASE = 0x8005C000;
+
+                foreach (offset_resolver_item offsetResolverItem in Program.exec_resolver)
+                {
+                    try
+                    {
+                        ulong xbox_virtual_address = XBE_BASE + (ulong)offsetResolverItem.offset;
+                        offsetResolverItem.address = (long)Program.qmp.Translate(xbox_virtual_address);
+                    }
+                    catch
+                    {
+                        // If per-address translation fails, keep the linear address
+                    }
+                }
+
+                // Re-test with per-address translation
+                test_tags_value = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
+            }
+
+            string translationMethod = usedLinearMapping ? "linear" : "per-address";
+            long tagsAddr = Program.exec_resolver["tags"].address;
+            UpdateHookStatus($"Step 5c: Using {translationMethod} mapping (tags@0x{tagsAddr:X}={test_tags_value:X})");
 
             var game_state_players_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["players"].address));
             var game_state_objects_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["objects"].address));
             var game_engine_addr = Program.qmp.Translate(Program.memory.ReadUInt(Program.exec_resolver["game_engine_globals"].address));
             var game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
 
-            UpdateHookStatus("Step 5d: Waiting for game to load...");
+            Console.WriteLine($"DEBUG: game_state_offset (tags value) = 0x{game_state_offset:X}");
+
+            UpdateHookStatus($"Step 5d: Waiting for game to load... (tags=0x{game_state_offset:X})");
 
             int waitAttempts = 0;
             while (game_state_offset == 0)
@@ -656,10 +732,19 @@ namespace xemuh2stats
                 Application.DoEvents();
                 game_state_offset = Program.memory.ReadUInt(Program.exec_resolver["tags"].address);
                 waitAttempts++;
+                if (waitAttempts % 50 == 0) // Update status every 5 seconds
+                {
+                    UpdateHookStatus($"Step 5d: Waiting... ({translationMethod}, tags@0x{tagsAddr:X}=0x{game_state_offset:X})");
+                }
                 if (waitAttempts > 600) // 60 second timeout
                 {
-                    UpdateHookStatus("Timeout - game not loaded");
-                    MessageBox.Show("Timeout waiting for game to load. Please load a game in XEMU and try again.", "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    UpdateHookStatus($"Timeout ({translationMethod})");
+                    MessageBox.Show($"Timeout waiting for game to load.\n\n" +
+                        $"Translation method: {translationMethod}\n" +
+                        $"Tags address: 0x{tagsAddr:X}\n" +
+                        $"Tags value: 0x{game_state_offset:X}\n\n" +
+                        "Make sure Halo 2 is loaded to the main menu before clicking Launch.",
+                        "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
@@ -695,22 +780,74 @@ namespace xemuh2stats
                 var xemu_path = FindFileInDirectory(xemu_path_text_box.Text, "xemu.exe");
                 if (!string.IsNullOrEmpty(xemu_path))
                 {
+                    int port = int.Parse(xemu_port_text_box.Text);
                     try
                     {
                         UpdateHookStatus("Step 1: Launching XEMU...");
+
+                        // Kill any existing XEMU processes first to avoid connecting to wrong instance
+                        foreach (var proc in Process.GetProcessesByName("xemu"))
+                        {
+                            try
+                            {
+                                proc.Kill();
+                                proc.WaitForExit(3000);
+                            }
+                            catch { /* Ignore errors killing old process */ }
+                        }
+
+                        // Get the directory where xemu.exe is located
+                        string xemuDirectory = System.IO.Path.GetDirectoryName(xemu_path);
+                        string qmpArgs = $"-qmp tcp:localhost:{port},server,nowait";
+                        string fullCommand = $"\"{xemu_path}\" {qmpArgs}";
+
+                        // Debug: Show what we're launching
+                        MessageBox.Show($"Launching XEMU:\n\nCommand: {fullCommand}\n\nWorking Dir: {xemuDirectory}",
+                            "Debug - Launch Command", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Use cmd.exe /c to ensure arguments are passed exactly as specified
                         ProcessStartInfo startInfo = new ProcessStartInfo
                         {
-                            FileName = xemu_path,
-                            Arguments = $"-qmp tcp:localhost:{int.Parse(xemu_port_text_box.Text)},server,nowait",
+                            FileName = "cmd.exe",
+                            Arguments = $"/c {fullCommand}",
+                            WorkingDirectory = xemuDirectory,
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
                         };
-                        xemu_proccess = Process.Start(startInfo);
+                        Process.Start(startInfo);
 
                         UpdateHookStatus("Step 2: Waiting for XEMU startup...");
-                        System.Threading.Thread.Sleep(7000);
+                        System.Threading.Thread.Sleep(5000);
+
+                        // Find the XEMU process after it starts
+                        var xemuProcesses = Process.GetProcessesByName("xemu");
+                        if (xemuProcesses.Length > 0)
+                        {
+                            xemu_proccess = xemuProcesses[0];
+                        }
+                        else
+                        {
+                            UpdateHookStatus("Error: XEMU process not found");
+                            MessageBox.Show("XEMU was launched but process not found.\nTry clicking Hook Only instead.",
+                                "XEMU Launch Issue", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+
+                        System.Threading.Thread.Sleep(2000);
+
+                        // Validate that XEMU actually started
+                        if (xemu_proccess == null || xemu_proccess.HasExited)
+                        {
+                            string exitInfo = xemu_proccess?.ExitCode.ToString() ?? "unknown";
+                            UpdateHookStatus("Error: XEMU failed to start");
+                            MessageBox.Show($"XEMU process failed to start or crashed immediately.\nExit code: {exitInfo}\n\nPlease check:\n- XEMU path is correct\n- XEMU is not already running\n- You have required permissions",
+                                "XEMU Launch Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
 
                         UpdateHookStatus("Step 3: Connecting to QMP...");
                         // QmpProxy constructor has built-in retry logic
-                        Program.qmp = new QmpProxy(int.Parse(xemu_port_text_box.Text));
+                        Program.qmp = new QmpProxy(port);
 
                         UpdateHookStatus("Step 4: Attaching to process memory...");
                         Program.memory = new MemoryHandler(xemu_proccess);
@@ -720,6 +857,9 @@ namespace xemuh2stats
 
                         UpdateHookStatus("Hooked successfully!");
                         is_valid = true;
+
+                        // Dedi mode will be applied by the timer when game enters lobby state
+                        // (writing at wrong game state can cause ghost player issues)
 
                         configuration_combo_box.Enabled = false;
                         settings_group_box.Enabled = false;
@@ -732,7 +872,24 @@ namespace xemuh2stats
                     catch (Exception ex)
                     {
                         UpdateHookStatus($"Error: {ex.Message}");
-                        MessageBox.Show($"Hook failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                        // Provide detailed error information
+                        string processStatus = "Unknown";
+                        if (xemu_proccess != null)
+                        {
+                            processStatus = xemu_proccess.HasExited ? $"Exited (code: {xemu_proccess.ExitCode})" : "Still running";
+                        }
+
+                        string errorDetails = $"Hook failed: {ex.Message}\n\n" +
+                            $"XEMU Status: {processStatus}\n" +
+                            $"QMP Port: {port}\n\n" +
+                            "Possible causes:\n" +
+                            "- XEMU is still starting up (try again)\n" +
+                            "- Another process is using port " + port + "\n" +
+                            "- Firewall blocking connection\n" +
+                            "- XEMU crashed during startup";
+
+                        MessageBox.Show(errorDetails, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -753,6 +910,25 @@ namespace xemuh2stats
         {
             Program.memory.WriteBool(Program.exec_resolver["disable_rendering"].address,
                 !disable_rendering_check_box.Checked, false);
+        }
+
+        private void profile_disabled_check_box_CheckedChanged(object sender, EventArgs e)
+        {
+            // Apply dedi mode immediately when checkbox is toggled (only if hooked AND in lobby)
+            if (is_valid && Program.memory != null)
+            {
+                try
+                {
+                    var cycle = (life_cycle)Program.memory.ReadInt(Program.exec_resolver["life_cycle"].address);
+                    if (cycle == life_cycle.in_lobby)
+                    {
+                        Program.memory.WriteBool(Program.exec_resolver["profile_enabled"].address,
+                            !profile_disabled_check_box.Checked, false);
+                    }
+                    // If not in lobby, the timer will apply it when we return to lobby
+                }
+                catch { /* Ignore errors */ }
+            }
         }
 
         private void configuration_save_button_Click(object sender, EventArgs e)
@@ -882,6 +1058,95 @@ namespace xemuh2stats
         private void websocket_bind_link_label_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             Process.Start("https://networkengineering.stackexchange.com/a/59838");
+        }
+
+        // Dark mode toggle
+        private bool isDarkMode = true; // Default to dark mode
+
+        private void theme_toggle_button_Click(object sender, EventArgs e)
+        {
+            isDarkMode = !isDarkMode;
+            ApplyTheme();
+        }
+
+        private void ApplyTheme()
+        {
+            System.Drawing.Color backColor, foreColor, controlBackColor, gridBackColor, gridForeColor;
+
+            if (isDarkMode)
+            {
+                backColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                foreColor = System.Drawing.Color.White;
+                controlBackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                gridBackColor = System.Drawing.Color.FromArgb(37, 37, 38);
+                gridForeColor = System.Drawing.Color.White;
+                theme_toggle_button.Text = "☀";
+            }
+            else
+            {
+                backColor = SystemColors.Control;
+                foreColor = SystemColors.ControlText;
+                controlBackColor = SystemColors.Window;
+                gridBackColor = SystemColors.Window;
+                gridForeColor = SystemColors.ControlText;
+                theme_toggle_button.Text = "🌙";
+            }
+
+            this.BackColor = backColor;
+            this.ForeColor = foreColor;
+
+            ApplyThemeToControls(this.Controls, backColor, foreColor, controlBackColor, gridBackColor, gridForeColor);
+        }
+
+        private void ApplyThemeToControls(System.Windows.Forms.Control.ControlCollection controls, System.Drawing.Color backColor, System.Drawing.Color foreColor, System.Drawing.Color controlBackColor, System.Drawing.Color gridBackColor, System.Drawing.Color gridForeColor)
+        {
+            foreach (System.Windows.Forms.Control control in controls)
+            {
+                if (control is DataGridView dgv)
+                {
+                    dgv.BackgroundColor = gridBackColor;
+                    dgv.ForeColor = gridForeColor;
+                    dgv.DefaultCellStyle.BackColor = gridBackColor;
+                    dgv.DefaultCellStyle.ForeColor = gridForeColor;
+                    dgv.ColumnHeadersDefaultCellStyle.BackColor = backColor;
+                    dgv.ColumnHeadersDefaultCellStyle.ForeColor = foreColor;
+                    dgv.EnableHeadersVisualStyles = false;
+                }
+                else if (control is System.Windows.Forms.TextBox || control is ComboBox || control is RichTextBox)
+                {
+                    control.BackColor = controlBackColor;
+                    control.ForeColor = foreColor;
+                }
+                else if (control is Button btn)
+                {
+                    if (btn != theme_toggle_button)
+                    {
+                        btn.BackColor = controlBackColor;
+                        btn.ForeColor = foreColor;
+                        btn.FlatStyle = FlatStyle.Flat;
+                        btn.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
+                    }
+                }
+                else if (control is TabControl || control is TabPage || control is GroupBox || control is Panel)
+                {
+                    control.BackColor = backColor;
+                    control.ForeColor = foreColor;
+                }
+                else if (control is Label || control is CheckBox || control is LinkLabel)
+                {
+                    control.ForeColor = foreColor;
+                }
+                else if (control is StatusStrip ss)
+                {
+                    ss.BackColor = backColor;
+                    ss.ForeColor = foreColor;
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls, backColor, foreColor, controlBackColor, gridBackColor, gridForeColor);
+                }
+            }
         }
     }
 

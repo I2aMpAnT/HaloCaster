@@ -17,7 +17,9 @@ public class QMPError : Exception
 
 public class QMPConnectError : QMPError
 {
-    public QMPConnectError() : base("QMP Connection Error") { }
+    public QMPConnectError(string details = null) : base(details != null
+        ? $"QMP Connection Error: {details}"
+        : "QMP Connection Error: XEMU socket connected but QMP greeting not received. XEMU may still be initializing.") { }
 }
 
 public class QMPCapabilitiesError : QMPError
@@ -76,12 +78,31 @@ public class QEMUMonitorProtocol
 
     private Dictionary<string, object> NegotiateCapabilities()
     {
-        _sockFile = new StreamReader(new NetworkStream(_sock));
-        var greeting = JsonRead();
+        // Set socket timeout to prevent hanging indefinitely
+        _sock.ReceiveTimeout = 10000; // 10 seconds
+        _sock.SendTimeout = 10000;
 
-        if (greeting == null || !greeting.ContainsKey("QMP"))
+        var networkStream = new NetworkStream(_sock);
+        _sockFile = new StreamReader(networkStream);
+
+        Dictionary<string, object> greeting = null;
+        try
         {
-            throw new QMPConnectError();
+            greeting = JsonRead();
+        }
+        catch (IOException ex)
+        {
+            throw new QMPConnectError($"Timeout reading QMP greeting: {ex.Message}");
+        }
+
+        if (greeting == null)
+        {
+            throw new QMPConnectError("Empty response - XEMU QMP server may not be ready");
+        }
+
+        if (!greeting.ContainsKey("QMP"))
+        {
+            throw new QMPConnectError($"Invalid greeting (no QMP key). Got: {Newtonsoft.Json.JsonConvert.SerializeObject(greeting)}");
         }
 
         var resp = Cmd("qmp_capabilities");
@@ -235,39 +256,56 @@ public class QmpProxy
 
     public QmpProxy(int port)
     {
+        // Clear static caches to avoid stale data from previous failed attempts
+        ClearCaches();
         Connect(port);
+    }
+
+    public static void ClearCaches()
+    {
+        knownAddresses.Clear();
+        memoryCache.Clear();
+        Console.WriteLine("QMP caches cleared");
     }
 
     private void Connect(int port)
     {
-        int i = 0;
-        while (true)
+        const int maxRetries = 15;
+        Exception lastException = null;
+
+        for (int i = 0; i < maxRetries; i++)
         {
             if (i > 0)
             {
-                System.Threading.Thread.Sleep(1000);
+                // Progressive delay: 1s, 2s, 3s, 4s, 5s (max)
+                int delay = Math.Min(i, 5) * 1000;
+                System.Threading.Thread.Sleep(delay);
             }
 
             try
             {
+                // Dispose previous failed connection attempt if any
+                if (_qmp != null)
+                {
+                    try { _qmp.Close(); } catch { }
+                    _qmp = null;
+                }
+
                 _qmp = new QEMUMonitorProtocol("localhost", false);
                 _qmp.Connect(port);
+                return; // Success - exit the method
             }
-            catch
+            catch (Exception ex)
             {
-                if (i > 4)
-                {
-                    throw;
-                }
-                else
-                {
-                    i++;
-                    continue;
-                }
+                lastException = ex;
+                // Continue retrying
             }
-
-            break;
         }
+
+        // All retries exhausted - throw with helpful message
+        throw new Exception($"Failed to connect to QMP on port {port} after {maxRetries} attempts. " +
+            $"Last error: {lastException?.Message ?? "Unknown"}\n\n" +
+            "XEMU may need more time to start, or QMP is not enabled.");
     }
 
     private Dictionary<string, object> RunCmd(object cmd)
@@ -450,7 +488,14 @@ public class QmpProxy
         {
             // Log the actual response for debugging
             Console.WriteLine($"Error converting GVA 0x{addr:X} to GPA. Response: {rawResponse}");
-            throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Game may not be fully loaded or QMP response format changed.");
+
+            // Check for specific error responses
+            if (rawResponse.Contains("Unmapped"))
+            {
+                throw new Exception($"Address 0x{addr:X} is unmapped. Halo 2 must be fully loaded to the main menu before hooking. If already at menu, the game region/version may be incompatible.");
+            }
+
+            throw new Exception($"Error converting GVA 0x{addr:X} to GPA. Response was: {rawResponse.Trim()}");
         }
     }
 

@@ -55,6 +55,7 @@
             this.configuration_combo_box = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.xemu_launch_button = new System.Windows.Forms.Button();
+            this.theme_toggle_button = new System.Windows.Forms.Button();
             this.players_tab_page = new System.Windows.Forms.TabPage();
             this.players_table = new System.Windows.Forms.DataGridView();
             this.column_player_emblem = new System.Windows.Forms.DataGridViewImageColumn();
@@ -136,9 +137,12 @@
             this.statusStrip1.SuspendLayout();
             this.events_tab_page.SuspendLayout();
             this.SuspendLayout();
-            // 
+            //
             // main_tab_control
-            // 
+            //
+            this.main_tab_control.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.main_tab_control.Controls.Add(this.setup_tab_page);
             this.main_tab_control.Controls.Add(this.players_tab_page);
             this.main_tab_control.Controls.Add(this.identity_tab_page);
@@ -187,9 +191,12 @@
             this.configuration_save_button.Text = "Save";
             this.configuration_save_button.UseVisualStyleBackColor = true;
             this.configuration_save_button.Click += new System.EventHandler(this.configuration_save_button_Click);
-            // 
+            //
             // settings_group_box
-            // 
+            //
+            this.settings_group_box.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.settings_group_box.Controls.Add(this.websocket_bind_link_label);
             this.settings_group_box.Controls.Add(this.label11);
             this.settings_group_box.Controls.Add(this.label13);
@@ -373,16 +380,19 @@
             this.disable_rendering_check_box.UseVisualStyleBackColor = true;
             this.disable_rendering_check_box.Visible = false;
             this.disable_rendering_check_box.CheckedChanged += new System.EventHandler(this.disable_rendering_check_box_CheckedChanged);
-            // 
+            //
             // profile_disabled_check_box
-            // 
+            //
             this.profile_disabled_check_box.AutoSize = true;
+            this.profile_disabled_check_box.Checked = true;
+            this.profile_disabled_check_box.CheckState = System.Windows.Forms.CheckState.Checked;
             this.profile_disabled_check_box.Location = new System.Drawing.Point(6, 19);
             this.profile_disabled_check_box.Name = "profile_disabled_check_box";
             this.profile_disabled_check_box.Size = new System.Drawing.Size(77, 17);
             this.profile_disabled_check_box.TabIndex = 0;
             this.profile_disabled_check_box.Text = "Dedi mode";
             this.profile_disabled_check_box.UseVisualStyleBackColor = true;
+            this.profile_disabled_check_box.CheckedChanged += new System.EventHandler(this.profile_disabled_check_box_CheckedChanged);
             // 
             // xemu_browse_button
             // 
@@ -413,9 +423,10 @@
             this.label1.TabIndex = 21;
             this.label1.Text = "Configuration:";
             this.label1.TextAlign = System.Drawing.ContentAlignment.TopRight;
-            // 
+            //
             // xemu_launch_button
-            // 
+            //
+            this.xemu_launch_button.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) | System.Windows.Forms.AnchorStyles.Right)));
             this.xemu_launch_button.Location = new System.Drawing.Point(12, 517);
             this.xemu_launch_button.Name = "xemu_launch_button";
             this.xemu_launch_button.Size = new System.Drawing.Size(750, 101);
@@ -423,7 +434,7 @@
             this.xemu_launch_button.Text = "Launch";
             this.xemu_launch_button.UseVisualStyleBackColor = true;
             this.xemu_launch_button.Click += new System.EventHandler(this.xemu_launch_button_Click);
-            // 
+            //
             // players_tab_page
             // 
             this.players_tab_page.Controls.Add(this.players_table);
@@ -434,11 +445,14 @@
             this.players_tab_page.TabIndex = 0;
             this.players_tab_page.Text = "Players";
             this.players_tab_page.UseVisualStyleBackColor = true;
-            // 
+            //
             // players_table
-            // 
+            //
             this.players_table.AllowUserToAddRows = false;
             this.players_table.AllowUserToDeleteRows = false;
+            this.players_table.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.players_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.players_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.column_player_emblem,
@@ -525,6 +539,9 @@
             //
             this.identity_table.AllowUserToAddRows = false;
             this.identity_table.AllowUserToDeleteRows = false;
+            this.identity_table.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.identity_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.identity_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.column_identity_name,
@@ -535,6 +552,7 @@
             this.identity_table.ReadOnly = true;
             this.identity_table.Size = new System.Drawing.Size(756, 599);
             this.identity_table.TabIndex = 0;
+            this.identity_table.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.identity_table_CellClick);
             //
             // column_identity_name
             //
@@ -576,11 +594,14 @@
             this.weapon_player_select.Name = "weapon_player_select";
             this.weapon_player_select.Size = new System.Drawing.Size(121, 21);
             this.weapon_player_select.TabIndex = 1;
-            // 
+            //
             // weapon_stat_table
-            // 
+            //
             this.weapon_stat_table.AllowUserToAddRows = false;
             this.weapon_stat_table.AllowUserToDeleteRows = false;
+            this.weapon_stat_table.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.weapon_stat_table.CausesValidation = false;
             this.weapon_stat_table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.weapon_stat_table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
@@ -974,9 +995,24 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 687);
+            this.Controls.Add(this.theme_toggle_button);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.main_tab_control);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            //
+            // theme_toggle_button
+            //
+            this.theme_toggle_button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.theme_toggle_button.FlatAppearance.BorderSize = 0;
+            this.theme_toggle_button.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.theme_toggle_button.Font = new System.Drawing.Font("Segoe UI", 14F);
+            this.theme_toggle_button.Location = new System.Drawing.Point(760, 2);
+            this.theme_toggle_button.Name = "theme_toggle_button";
+            this.theme_toggle_button.Size = new System.Drawing.Size(36, 32);
+            this.theme_toggle_button.TabIndex = 100;
+            this.theme_toggle_button.Text = "☀";
+            this.theme_toggle_button.UseVisualStyleBackColor = true;
+            this.theme_toggle_button.Click += new System.EventHandler(this.theme_toggle_button_Click);
             this.Name = "Form1";
             this.Text = "I hate my life";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
@@ -1044,6 +1080,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox xemu_path_text_box;
         private System.Windows.Forms.Button xemu_launch_button;
+        private System.Windows.Forms.Button theme_toggle_button;
         private System.Windows.Forms.DataGridViewTextBoxColumn asdf_1;
         private System.Windows.Forms.DataGridViewTextBoxColumn debug_index_column;
         private System.Windows.Forms.DataGridViewTextBoxColumn asdf_2;
