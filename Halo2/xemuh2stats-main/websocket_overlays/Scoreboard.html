@@ -176,10 +176,10 @@
                     // Request both teams
                     requestBothTeams();
 
-                    // Poll every 500ms
+                    // Poll every 1 second for time-based scores
                     updateInterval = setInterval(() => {
                         requestBothTeams();
-                    }, 500);
+                    }, 1000);
 
                 } catch (error) {
                     document.getElementById('connection-status').textContent = 'Connection failed';
