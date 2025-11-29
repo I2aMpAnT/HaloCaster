@@ -151,6 +151,10 @@
             const client = new websocket_client();
             let updateInterval;
 
+            // Store last known players to persist display
+            let lastRedPlayers = [];
+            let lastBluePlayers = [];
+
             async function init() {
                 const wsUrl = `ws://${window.config.host}:${window.config.port}`;
 
@@ -159,6 +163,7 @@
                     document.getElementById('connection-status').textContent = '';
 
                     client.add_message_recieved_callback('get_team_scoreboard', handleTeamScoreboard);
+                    client.add_message_recieved_callback('error', handleError);
                     client.add_message_recieved_callback('close', handleDisconnect);
 
                     requestBothTeams();
@@ -178,7 +183,28 @@
             function handleDisconnect() {
                 document.getElementById('connection-status').textContent = 'Reconnecting...';
                 if (updateInterval) clearInterval(updateInterval);
+                // Reset scores to 0 but keep player names
+                document.getElementById('red-score').textContent = '0';
+                document.getElementById('blue-score').textContent = '0';
+                resetPlayersToZero();
                 setTimeout(init, 3000);
+            }
+
+            function handleError(error) {
+                // On error (like returning to lobby), reset scores but keep structure
+                document.getElementById('red-score').textContent = '0';
+                document.getElementById('blue-score').textContent = '0';
+                resetPlayersToZero();
+            }
+
+            function resetPlayersToZero() {
+                // Reset last known players to show 0 kills
+                if (lastRedPlayers.length > 0) {
+                    renderTeamPlayers('red-players', lastRedPlayers.map(p => ({...p, kills: 0, is_dead: false})));
+                }
+                if (lastBluePlayers.length > 0) {
+                    renderTeamPlayers('blue-players', lastBluePlayers.map(p => ({...p, kills: 0, is_dead: false})));
+                }
             }
 
             function handleTeamScoreboard(response) {
@@ -186,10 +212,16 @@
 
                 if (teamIndex === 0) {
                     document.getElementById('red-score').textContent = response.team_score;
-                    renderTeamPlayers('red-players', response.players);
+                    if (response.players && response.players.length > 0) {
+                        lastRedPlayers = response.players;
+                    }
+                    renderTeamPlayers('red-players', response.players || lastRedPlayers);
                 } else if (teamIndex === 1) {
                     document.getElementById('blue-score').textContent = response.team_score;
-                    renderTeamPlayers('blue-players', response.players);
+                    if (response.players && response.players.length > 0) {
+                        lastBluePlayers = response.players;
+                    }
+                    renderTeamPlayers('blue-players', response.players || lastBluePlayers);
                 }
             }
 
@@ -197,7 +229,7 @@
                 const container = document.getElementById(containerId);
 
                 if (!players || players.length === 0) {
-                    container.innerHTML = '';
+                    // Don't clear - keep existing content
                     return;
                 }
 
