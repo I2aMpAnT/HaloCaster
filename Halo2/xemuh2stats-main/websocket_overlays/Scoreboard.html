@@ -335,18 +335,16 @@
                 if (!isSlayer && objective) {
                     const displayValue = objective.isTime ? formatTime(objective.value) : objective.value;
                     statsHtml = `
-                        <div class="objective-stat">
-                            <img src="${objective.icon}" class="objective-icon" alt="">
-                            <span class="stat-value">${displayValue}</span>
-                        </div>
+                        <span class="stat-label">Score:</span>
+                        <span class="stat-value">${displayValue}</span>
                     ` + statsHtml;
                 }
 
                 return `
                     <div class="player-row ${teamColor}">
                         <div class="player-emblem">${emblemHtml}</div>
-                        <span class="player-name">${player.name || 'Unknown'}</span>
                         ${weaponHtml}
+                        <span class="player-name">${player.name || 'Unknown'}</span>
                         <div class="player-stats">${statsHtml}</div>
                     </div>
                 `;
