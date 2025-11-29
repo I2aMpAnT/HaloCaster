@@ -4,7 +4,7 @@
         <script src="websocket_client.js"></script>
         <script src="config.js"></script>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700&display=swap');
 
             * {
                 margin: 0;
@@ -13,7 +13,7 @@
             }
 
             body {
-                font-family: 'Barlow Condensed', 'Gotham', 'Arial Narrow', sans-serif;
+                font-family: 'Overpass', 'Highway Gothic', 'Arial', sans-serif;
                 background-color: transparent;
                 color: white;
             }
@@ -41,7 +41,7 @@
             }
 
             .team-name {
-                text-transform: uppercase;
+                /* No text-transform - use proper case */
             }
 
             .team-score {
@@ -99,6 +99,21 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+            }
+
+            .player-weapon {
+                width: 28px;
+                height: 20px;
+                margin-left: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .player-weapon img {
+                max-width: 28px;
+                max-height: 20px;
+                filter: brightness(0) invert(1);
             }
 
             .player-stats {
@@ -228,6 +243,35 @@
                 playersSection.innerHTML = html;
             }
 
+            // Map weapon names to icon filenames
+            function getWeaponIconPath(weaponName) {
+                if (!weaponName || weaponName === 'None') return 'Weapons/None.png';
+                // Remove spaces and match to filename
+                const cleanName = weaponName.replace(/\s+/g, '');
+                return `Weapons/${cleanName}.png`;
+            }
+
+            // Get objective score based on game type
+            function getObjectiveScore(player, gameType) {
+                if (!gameType) return null;
+                const gt = gameType.toLowerCase();
+
+                if (gt.includes('ctf') || gt.includes('capture')) {
+                    return { label: 'C', value: player.ctf_scores || 0 };
+                } else if (gt.includes('assault') || gt.includes('bomb')) {
+                    return { label: 'B', value: player.assault_score || 0 };
+                } else if (gt.includes('oddball') || gt.includes('ball')) {
+                    return { label: 'T', value: Math.floor(player.oddball_score || 0) };
+                } else if (gt.includes('king') || gt.includes('koth')) {
+                    return { label: 'T', value: player.koth_time || 0 };
+                } else if (gt.includes('territories') || gt.includes('territory')) {
+                    return { label: 'T', value: player.territories_taken || 0 };
+                } else if (gt.includes('juggernaut')) {
+                    return { label: 'T', value: player.juggernaut_time || 0 };
+                }
+                return null;
+            }
+
             function buildPlayerRow(player, teamColor, gameType) {
                 const isDead = player.is_dead;
 
@@ -241,8 +285,13 @@
                     emblemHtml = '<span style="width:24px;height:24px;background:#444;border-radius:2px;"></span>';
                 }
 
+                // Weapon icon
+                const weaponPath = getWeaponIconPath(player.current_weapon);
+                const weaponHtml = `<div class="player-weapon"><img src="${weaponPath}" alt="${player.current_weapon || 'None'}"></div>`;
+
                 // Determine if we should show objective stat
                 const isSlayer = !gameType || gameType.toLowerCase().includes('slayer');
+                const objective = getObjectiveScore(player, gameType);
 
                 // Stats display
                 let statsHtml = `
@@ -255,10 +304,10 @@
                 `;
 
                 // Add objective stat for non-slayer games
-                if (!isSlayer && player.objective_score !== undefined) {
+                if (!isSlayer && objective) {
                     statsHtml = `
-                        <span class="stat-label">O</span>
-                        <span class="stat-value">${player.objective_score || 0}</span>
+                        <span class="stat-label">${objective.label}</span>
+                        <span class="stat-value">${objective.value}</span>
                     ` + statsHtml;
                 }
 
@@ -266,6 +315,7 @@
                     <div class="player-row ${teamColor}">
                         <div class="player-emblem">${emblemHtml}</div>
                         <span class="player-name">${player.name || 'Unknown'}</span>
+                        ${weaponHtml}
                         <div class="player-stats">${statsHtml}</div>
                     </div>
                 `;
