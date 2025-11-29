@@ -691,7 +691,7 @@ namespace xemuh2stats
                 UpdateHookStatus("Step 5b: Linear mapping failed, trying per-address translation...");
 
                 // Clear any cached translations
-                Program.qmp.ClearCaches();
+                QmpProxy.ClearCaches();
 
                 const ulong XBE_BASE = 0x8005C000;
 
