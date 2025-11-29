@@ -194,7 +194,7 @@
             }
 
             function requestData() {
-                client.request_players("scoreboard");
+                client.request_players("full");
                 client.request_variant_details();
             }
 
@@ -216,6 +216,19 @@
                 return ['capture_the_flag', 'assault', 'oddball', 'king_of_the_hill', 'territories', 'juggernaut'].includes(currentGameType);
             }
 
+            function getObjectiveScore(gameStats) {
+                if (!gameStats) return 0;
+                switch (currentGameType) {
+                    case 'capture_the_flag': return gameStats.ctf_scores || 0;
+                    case 'assault': return gameStats.assault_score || 0;
+                    case 'oddball': return gameStats.oddball_score || 0;
+                    case 'king_of_the_hill': return gameStats.koth_kills_as_king || 0;
+                    case 'territories': return gameStats.territories_taken || 0;
+                    case 'juggernaut': return gameStats.juggernaut_time || 0;
+                    default: return 0;
+                }
+            }
+
             function handlePlayers(playersData) {
                 let redPlayers = [];
                 let bluePlayers = [];
@@ -227,15 +240,17 @@
 
                 playerNames.forEach(playerName => {
                     const p = playersData[playerName];
-                    const kills = parseInt(p.kills) || 0;
-                    const deaths = parseInt(p.deaths) || 0;
-                    const assists = parseInt(p.assists) || 0;
 
-                    // Get objective score based on game type
-                    let objScore = 0;
-                    if (p.ctf_scores) objScore = parseInt(p.ctf_scores) || 0;
-                    if (currentGameType === 'assault' && p.assault_score) objScore = parseInt(p.assault_score) || 0;
-                    if (currentGameType === 'oddball' && p.oddball_score) objScore = parseInt(p.oddball_score) || 0;
+                    // Full type returns nested game_stats and player objects
+                    const stats = p.game_stats || {};
+                    const playerInfo = p.player || {};
+                    const profile = playerInfo.profile_traits?.profile || {};
+                    const emblemInfo = profile.emblem_info || {};
+
+                    const kills = stats.kills || 0;
+                    const deaths = stats.deaths || 0;
+                    const assists = stats.assists || 0;
+                    const objScore = getObjectiveScore(stats);
 
                     const playerData = {
                         name: playerName,
@@ -244,21 +259,22 @@
                         assists: assists,
                         obj_score: objScore,
                         score: isObj ? objScore : kills,
-                        is_dead: p.is_dead === 'True' || p.is_dead === true,
-                        current_weapon: p.current_weapon || 'None',
-                        emblem_foreground: p.emblem_foreground,
-                        emblem_background: p.emblem_background,
-                        primary_color: p.primary_color,
-                        secondary_color: p.secondary_color,
-                        tertiary_color: p.tertiary_color,
-                        quaternary_color: p.quaternary_color
+                        is_dead: false, // Will check from game state if needed
+                        current_weapon: 'None',
+                        emblem_foreground: emblemInfo.foreground_emblem,
+                        emblem_background: emblemInfo.background_emblem,
+                        primary_color: profile.primary_color,
+                        secondary_color: profile.secondary_color,
+                        tertiary_color: profile.tertiary_color,
+                        quaternary_color: profile.quaternary_color
                     };
 
-                    const team = p.team || '';
-                    if (team.includes('red')) {
+                    // Get team index (0 = red, 1 = blue)
+                    const teamIndex = playerInfo.team_index;
+                    if (teamIndex === 0 || teamIndex === 'red') {
                         redPlayers.push(playerData);
                         redScore += playerData.score;
-                    } else if (team.includes('blue')) {
+                    } else if (teamIndex === 1 || teamIndex === 'blue') {
                         bluePlayers.push(playerData);
                         blueScore += playerData.score;
                     }
