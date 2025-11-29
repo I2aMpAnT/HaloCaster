@@ -59,6 +59,30 @@ const weaponIcons = {
     'BombExplosionDamage': 'AssaultBomb.png'
 };
 
+// Weapon to medal mapping - returns medal info or null
+function getMedalForWeapon(weapon) {
+    // Sniper kills (SniperRifle, BeamRifle)
+    if (weapon === 'SniperRifle' || weapon === 'BeamRifle') {
+        return { icon: 'Medals/Sniper.png', text: 'SNIPER' };
+    }
+    // Stick It (plasma grenade)
+    if (weapon === 'PlasmaGrenade') {
+        return { icon: 'Medals/StickIt.png', text: 'STICK IT' };
+    }
+    // Road kills (vehicle splatters)
+    const vehicleWeapons = ['Banshee', 'Ghost', 'Mongoose', 'Scorpion', 'SpectreDriver',
+                            'WarthogDriver', 'Wraith', 'Tank'];
+    if (vehicleWeapons.includes(weapon)) {
+        return { icon: 'Medals/RoadKill.png', text: 'SPLATTER' };
+    }
+    // Bone Cracker (melee kills)
+    const meleeWeapons = ['GenericMeleeDamage', 'FlagMeleeDamage', 'BombMeleeDamage', 'BallMeleeDamage'];
+    if (meleeWeapons.includes(weapon)) {
+        return { icon: 'Medals/BoneCracker.png', text: 'BEAT DOWN' };
+    }
+    return null;
+}
+
 client.add_message_recieved_callback('kill_feed_push', (killData) => {
     const killer = killData.killer;
     const killerTeam = killData.killer_team || '';
@@ -77,16 +101,25 @@ client.add_message_recieved_callback('kill_feed_push', (killData) => {
     // Get weapon icon
     const weaponIcon = weaponIcons[weapon] || 'Guardians.png';
 
+    // Check for medal
+    const medal = getMedalForWeapon(weapon);
+    let medalHtml = '';
+    if (medal) {
+        // Try to show icon, fallback to text badge
+        medalHtml = `<img class="medal-icon" src="${medal.icon}" alt="${medal.text}" onerror="this.outerHTML='<span class=\\'medal-badge\\'>${medal.text}</span>'" />`;
+    }
+
     // Create kill feed entry
     const entry = document.createElement('div');
     entry.className = 'kill-entry ' + teamClass;
     entry.id = 'kill_' + current_id;
 
-    // Format: {killer} killed {weapon icon} {victim}
+    // Format: {killer} killed {weapon icon} {medal} {victim}
     entry.innerHTML = `
         <span class="killer">${killer}</span>
         <span class="killed-text">killed</span>
         <img class="weapon-icon" src="Weapons/${weaponIcon}" alt="${weapon}" />
+        ${medalHtml}
         <span class="victim">${victim}</span>
     `;
 
