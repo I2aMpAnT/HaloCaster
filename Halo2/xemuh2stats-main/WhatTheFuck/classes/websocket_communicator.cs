@@ -532,6 +532,13 @@ namespace WhatTheFuck.classes
                                 player_properties.Add("assists", real_player.game_stats.assists.ToString());
                                 player_properties.Add("is_dead", (state_player.respawn_time == 0) ? "False" : "True");
                                 player_properties.Add("respawn_timer", (state_player.respawn_time == 0) ? "0" : state_player.field_160.ToString());
+
+                                // Detect if player has quit: no unit, not respawning, and no lives
+                                bool hasQuit = state_player.unit_index == uint.MaxValue &&
+                                               state_player.respawn_time == 0 &&
+                                               state_player.player_lives_count <= 0;
+                                player_properties.Add("has_quit", hasQuit ? "True" : "False");
+
                                 if (state_player.unit_index != uint.MaxValue)
                                 {
                                     player_properties.Add("current_weapon",

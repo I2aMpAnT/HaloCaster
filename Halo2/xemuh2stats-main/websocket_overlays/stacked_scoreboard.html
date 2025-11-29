@@ -69,6 +69,14 @@
             .player-row.brown { background: rgba(120, 80, 50, 0.9); }
             .player-row.pink { background: rgba(200, 100, 150, 0.9); }
 
+            .player-row.quit {
+                opacity: 0.5;
+            }
+
+            .player-row.quit .player-name {
+                color: #888;
+            }
+
             .player-emblem {
                 width: 26px;
                 height: 26px;
@@ -223,35 +231,54 @@
                        gt === 'capture_the_flag';
             }
 
+            function isTimeBasedGame() {
+                const gt = currentGameType.toLowerCase();
+                return gt.includes('oddball') || gt.includes('king') || gt.includes('hill') || gt.includes('juggernaut');
+            }
+
+            function formatTime(seconds) {
+                if (!seconds || seconds === 0) return '0:00';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
             function getObjectiveScore(gameStats) {
                 if (!gameStats) return 0;
                 const gt = currentGameType.toLowerCase();
 
                 // CTF
                 if (gt.includes('ctf') || gt.includes('flag') || gt === 'capture_the_flag') {
-                    return gameStats.ctf_scores || gameStats.Ctf_scores || gameStats.CTF_scores || 0;
+                    return gameStats.ctf_scores || 0;
                 }
                 // Assault
                 if (gt.includes('assault')) {
-                    return gameStats.assault_score || gameStats.Assault_score || 0;
+                    return gameStats.assault_score || 0;
                 }
-                // Oddball
+                // Oddball (time in seconds)
                 if (gt.includes('oddball')) {
-                    return gameStats.oddball_score || gameStats.Oddball_score || 0;
+                    return gameStats.oddball_score || 0;
                 }
                 // KOTH
                 if (gt.includes('king') || gt.includes('hill')) {
-                    return gameStats.koth_kills_as_king || gameStats.Koth_kills_as_king || 0;
+                    return gameStats.koth_kills_as_king || 0;
                 }
                 // Territories
                 if (gt.includes('territories')) {
-                    return gameStats.territories_taken || gameStats.Territories_taken || 0;
+                    return gameStats.territories_taken || 0;
                 }
-                // Juggernaut
+                // Juggernaut (time)
                 if (gt.includes('juggernaut')) {
-                    return gameStats.juggernaut_time || gameStats.Juggernaut_time || 0;
+                    return gameStats.juggernaut_time || 0;
                 }
                 return 0;
+            }
+
+            function formatObjectiveScore(score) {
+                if (isTimeBasedGame()) {
+                    return formatTime(score);
+                }
+                return score;
             }
 
             function handlePlayers(playersData, type) {
@@ -297,6 +324,7 @@
                         obj_score: objScore,
                         score: isObj ? objScore : kills,
                         is_dead: sb.is_dead === 'True' || sb.is_dead === true,
+                        has_quit: sb.has_quit === 'True' || sb.has_quit === true,
                         current_weapon: sb.current_weapon || 'None',
                         emblem_foreground: emblemInfo.foreground_emblem,
                         emblem_background: emblemInfo.background_emblem,
@@ -321,10 +349,11 @@
                 sortedTeamIndices.forEach(teamIndex => {
                     const teamClass = teamClasses[teamIndex] || 'red';
                     const teamName = teamNames[teamIndex] || 'Team ' + teamIndex;
+                    const displayScore = formatObjectiveScore(teams[teamIndex].totalScore);
                     headersHtml += `
                         <div class="team-score-row ${teamClass}">
                             <span>${teamName}</span>
-                            <span>${teams[teamIndex].totalScore}</span>
+                            <span>${displayScore}</span>
                         </div>
                     `;
                 });
@@ -347,13 +376,15 @@
                             ? '<span class="dead-x">X</span>'
                             : `<img src="${emblemUrl}" alt="" onerror="this.style.visibility='hidden'">`;
 
+                        const quitClass = player.has_quit ? ' quit' : '';
+
                         playersHtml += `
-                            <div class="player-row ${teamClass}">
+                            <div class="player-row ${teamClass}${quitClass}">
                                 <div class="player-emblem">${emblemContent}</div>
                                 <span class="player-name">${player.name}</span>
                                 <div class="player-weapon">${weaponImg}</div>
                                 <div class="player-stats">
-                                    ${isObj ? `<span class="stat-group"><span class="stat-label">S</span><span class="stat-value">${player.obj_score}</span></span>` : ''}
+                                    ${isObj ? `<span class="stat-group"><span class="stat-label">S</span><span class="stat-value">${formatObjectiveScore(player.obj_score)}</span></span>` : ''}
                                     <span class="stat-group"><span class="stat-label">K</span><span class="stat-value">${player.kills}</span></span>
                                     <span class="stat-group"><span class="stat-label">D</span><span class="stat-value">${player.deaths}</span></span>
                                     <span class="stat-group"><span class="stat-label">A</span><span class="stat-value">${player.assists}</span></span>
