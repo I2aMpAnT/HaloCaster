@@ -200,6 +200,8 @@
             let updateInterval;
             let redTeamData = null;
             let blueTeamData = null;
+            // Track player states to avoid unnecessary DOM updates
+            let playerRowCache = new Map();
 
             async function init() {
                 const wsUrl = `ws://${window.config.host}:${window.config.port}`;
@@ -238,7 +240,6 @@
             }
 
             function handleTeamScoreboard(response) {
-                console.log('Received team scoreboard:', response);
                 const teamIndex = parseInt(response.team_index);
 
                 if (teamIndex === 0) {
@@ -251,7 +252,6 @@
             }
 
             function renderScoreboard() {
-                console.log('Rendering - Red players:', redTeamData?.players, 'Blue players:', blueTeamData?.players);
                 // Update team headers
                 if (redTeamData) {
                     document.getElementById('red-team-name').textContent = redTeamData.team_name || 'Red Team';
@@ -262,36 +262,73 @@
                     document.getElementById('blue-team-score').textContent = blueTeamData.team_score || 0;
                 }
 
-                // Build player rows
                 const playersSection = document.getElementById('players-section');
-                let html = '';
 
-                // Red team players
+                // Collect all current players
+                const allPlayers = [];
                 if (redTeamData && redTeamData.players) {
-                    console.log('Building red team rows, count:', redTeamData.players.length);
-                    redTeamData.players.forEach(player => {
-                        console.log('Red player:', player);
-                        html += buildPlayerRow(player, 'red', redTeamData.game_type);
+                    redTeamData.players.forEach((player, idx) => {
+                        allPlayers.push({ player, teamColor: 'red', gameType: redTeamData.game_type, id: `red-${idx}` });
                     });
                 }
-
-                // Blue team players
                 if (blueTeamData && blueTeamData.players) {
-                    console.log('Building blue team rows, count:', blueTeamData.players.length);
-                    blueTeamData.players.forEach(player => {
-                        console.log('Blue player:', player);
-                        html += buildPlayerRow(player, 'blue', blueTeamData.game_type);
+                    blueTeamData.players.forEach((player, idx) => {
+                        allPlayers.push({ player, teamColor: 'blue', gameType: blueTeamData.game_type, id: `blue-${idx}` });
                     });
                 }
 
-                console.log('Final HTML:', html);
-                playersSection.innerHTML = html;
+                // Track which rows we've seen this update
+                const seenIds = new Set();
+
+                allPlayers.forEach(({ player, teamColor, gameType, id }) => {
+                    seenIds.add(id);
+
+                    let rowEl = document.getElementById(`player-row-${id}`);
+                    const cached = playerRowCache.get(id);
+
+                    // Check if we need to rebuild the row (player changed, dead status changed, or emblem changed)
+                    const needsRebuild = !rowEl ||
+                        !cached ||
+                        cached.isDead !== player.is_dead ||
+                        cached.emblemUrl !== player.emblem_url ||
+                        cached.name !== player.name;
+
+                    if (needsRebuild) {
+                        // Create or replace the row
+                        const newRow = createPlayerRowElement(player, teamColor, gameType, id);
+                        if (rowEl) {
+                            rowEl.replaceWith(newRow);
+                        } else {
+                            playersSection.appendChild(newRow);
+                        }
+                        rowEl = newRow;
+
+                        // Update cache
+                        playerRowCache.set(id, {
+                            isDead: player.is_dead,
+                            emblemUrl: player.emblem_url,
+                            name: player.name
+                        });
+                    } else {
+                        // Just update dynamic content (stats, weapon) without touching iframe
+                        updatePlayerRowStats(rowEl, player, gameType);
+                    }
+                });
+
+                // Remove rows for players no longer present
+                const existingRows = playersSection.querySelectorAll('.player-row');
+                existingRows.forEach(row => {
+                    const rowId = row.id.replace('player-row-', '');
+                    if (!seenIds.has(rowId)) {
+                        row.remove();
+                        playerRowCache.delete(rowId);
+                    }
+                });
             }
 
             // Map weapon names to icon filenames
             function getWeaponIconPath(weaponName) {
                 if (!weaponName || weaponName === 'None') return 'Weapons/None.png';
-                // Remove spaces and match to filename
                 const cleanName = weaponName.replace(/\s+/g, '');
                 return `Weapons/${cleanName}.png`;
             }
@@ -309,45 +346,89 @@
                 const gt = gameType.toLowerCase();
 
                 if (gt.includes('ctf') || gt.includes('capture')) {
-                    return { icon: 'Weapons/Flag.png', value: player.ctf_scores || 0, isTime: false };
+                    return { value: player.ctf_scores || 0, isTime: false };
                 } else if (gt.includes('assault') || gt.includes('bomb')) {
-                    return { icon: 'Weapons/AssaultBomb.png', value: player.assault_score || 0, isTime: false };
+                    return { value: player.assault_score || 0, isTime: false };
                 } else if (gt.includes('oddball') || gt.includes('ball')) {
-                    return { icon: 'Weapons/OddBall.png', value: player.oddball_score || 0, isTime: true };
+                    return { value: player.oddball_score || 0, isTime: true };
                 } else if (gt.includes('king') || gt.includes('koth')) {
-                    return { icon: 'Weapons/OddBall.png', value: player.koth_time || 0, isTime: true };
+                    return { value: player.koth_time || 0, isTime: true };
                 } else if (gt.includes('territories') || gt.includes('territory')) {
-                    return { icon: 'Weapons/Flag.png', value: player.territories_taken || 0, isTime: false };
+                    return { value: player.territories_taken || 0, isTime: false };
                 } else if (gt.includes('juggernaut')) {
-                    return { icon: 'Weapons/OddBall.png', value: player.juggernaut_time || 0, isTime: true };
+                    return { value: player.juggernaut_time || 0, isTime: true };
                 }
                 return null;
             }
 
-            function buildPlayerRow(player, teamColor, gameType) {
-                const isDead = player.is_dead;
+            function createPlayerRowElement(player, teamColor, gameType, id) {
+                const row = document.createElement('div');
+                row.className = `player-row ${teamColor}`;
+                row.id = `player-row-${id}`;
 
-                // Emblem or dead X
-                let emblemHtml;
-                if (isDead) {
-                    emblemHtml = '<span class="dead-x">X</span>';
+                // Emblem container
+                const emblemDiv = document.createElement('div');
+                emblemDiv.className = 'player-emblem';
+
+                if (player.is_dead) {
+                    emblemDiv.innerHTML = '<span class="dead-x">X</span>';
                 } else if (player.emblem_url) {
-                    // Use iframe to render emblem.html (canvas-based emblem)
-                    emblemHtml = `<div class="emblem-iframe-container"><iframe src="${player.emblem_url}" scrolling="no"></iframe></div>`;
+                    emblemDiv.innerHTML = `<div class="emblem-iframe-container"><iframe src="${player.emblem_url}" scrolling="no"></iframe></div>`;
                 } else {
-                    emblemHtml = '<span style="width:22px;height:22px;background:#444;border-radius:2px;display:inline-block;"></span>';
+                    emblemDiv.innerHTML = '<span style="width:22px;height:22px;background:#444;border-radius:2px;display:inline-block;"></span>';
+                }
+                row.appendChild(emblemDiv);
+
+                // Weapon
+                const weaponDiv = document.createElement('div');
+                weaponDiv.className = 'player-weapon';
+                const weaponPath = getWeaponIconPath(player.current_weapon);
+                weaponDiv.innerHTML = `<img src="${weaponPath}" alt="${player.current_weapon || 'None'}">`;
+                row.appendChild(weaponDiv);
+
+                // Name
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'player-name';
+                nameSpan.textContent = player.name || 'Unknown';
+                row.appendChild(nameSpan);
+
+                // Stats
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'player-stats';
+                updateStatsDiv(statsDiv, player, gameType);
+                row.appendChild(statsDiv);
+
+                return row;
+            }
+
+            function updatePlayerRowStats(rowEl, player, gameType) {
+                // Update weapon
+                const weaponDiv = rowEl.querySelector('.player-weapon img');
+                if (weaponDiv) {
+                    const newPath = getWeaponIconPath(player.current_weapon);
+                    if (weaponDiv.src !== newPath) {
+                        weaponDiv.src = newPath;
+                        weaponDiv.alt = player.current_weapon || 'None';
+                    }
                 }
 
-                // Weapon icon
-                const weaponPath = getWeaponIconPath(player.current_weapon);
-                const weaponHtml = `<div class="player-weapon"><img src="${weaponPath}" alt="${player.current_weapon || 'None'}"></div>`;
+                // Update stats
+                const statsDiv = rowEl.querySelector('.player-stats');
+                if (statsDiv) {
+                    updateStatsDiv(statsDiv, player, gameType);
+                }
+            }
 
-                // Determine if we should show objective stat
+            function updateStatsDiv(statsDiv, player, gameType) {
                 const isSlayer = !gameType || gameType.toLowerCase().includes('slayer');
                 const objective = getObjectiveScore(player, gameType);
 
-                // Stats display
-                let statsHtml = `
+                let html = '';
+                if (!isSlayer && objective) {
+                    const displayValue = objective.isTime ? formatTime(objective.value) : objective.value;
+                    html += `<span class="stat-label">Score:</span><span class="stat-value">${displayValue}</span>`;
+                }
+                html += `
                     <span class="stat-label">K</span>
                     <span class="stat-value">${player.kills || 0}</span>
                     <span class="stat-label">D</span>
@@ -355,24 +436,7 @@
                     <span class="stat-label">A</span>
                     <span class="stat-value">${player.assists || 0}</span>
                 `;
-
-                // Add objective stat for non-slayer games
-                if (!isSlayer && objective) {
-                    const displayValue = objective.isTime ? formatTime(objective.value) : objective.value;
-                    statsHtml = `
-                        <span class="stat-label">Score:</span>
-                        <span class="stat-value">${displayValue}</span>
-                    ` + statsHtml;
-                }
-
-                return `
-                    <div class="player-row ${teamColor}">
-                        <div class="player-emblem">${emblemHtml}</div>
-                        ${weaponHtml}
-                        <span class="player-name">${player.name || 'Unknown'}</span>
-                        <div class="player-stats">${statsHtml}</div>
-                    </div>
-                `;
+                statsDiv.innerHTML = html;
             }
 
             // Start
